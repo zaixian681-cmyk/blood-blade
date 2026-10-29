@@ -40,8 +40,8 @@ J.initPlayer = function () {
     model: H, weapon: wp,
     pos: new THREE.Vector3(W.spawn.x, J.Terrain.heightAt(W.spawn.x, W.spawn.z), W.spawn.z),
     yaw: W.spawn.yaw, vy: 0, onGround: true,
-    hp: 240, maxHp: 240, stamina: 100, maxStamina: 100,
-    qi: 70, maxQi: J.WINFO.maxQi, chargeT: 0, airJumps: 1,
+    hp: 240, maxHp: 240, stamina: 150, maxStamina: 150,
+    qi: 70, maxQi: J.WINFO.maxQi, chargeT: 0, airJumps: 1, jumpCd: 0,
     moveDmgMul: 1, heavyHeld: false,
     state: 'idle', tim: 0, move: null, moveId: '', hitSet: [],
     camYaw: W.spawn.yaw + Math.PI, camPitch: 0.07, camDist: 4.05,
@@ -217,7 +217,7 @@ J.updatePlayer = function (dt, t) {
 
       /* 攻击中仍可闪避取消后摇（长刀后摇长，必须有这个出口） */
       var m0 = P.move;
-      if (wantDash && m0 && P.tim / P.moveDur > 0.62 && P.stamina >= 18) {
+      if (wantDash && m0 && P.tim / P.moveDur > 0.62 && P.stamina >= 12) {
         J.startDash();
       }
       /* 输入缓冲 */
@@ -255,9 +255,9 @@ J.updatePlayer = function (dt, t) {
         J.startCharge();
       } else if (wantAtk) {
         J.Combat.start(J.hasBreakTarget() ? 'b1' : 'l1');
-      } else if (wantDash && P.stamina >= 18) {
+      } else if (wantDash && P.stamina >= 12) {
         J.startDash();
-      } else if (wantJump && P.onGround) {
+      } else if (wantJump && P.onGround && P.jumpCd <= 0) {
         J.startJump();
       } else {
         if (IN.parryPress) { IN.parryPress = 0; P.parryWindow = 0.22; }
@@ -271,6 +271,9 @@ J.updatePlayer = function (dt, t) {
       P.bufferT -= dt;
       if (P.bufferT <= 0) P.buffered = null;
     }
+
+    /* 跳跃冷却衰减 */
+    if (P.jumpCd > 0) P.jumpCd -= dt;
 
     /* 招架窗口衰减 */
     if (P.parryWindow > 0) P.parryWindow -= dt;
@@ -329,7 +332,7 @@ J.updatePlayer = function (dt, t) {
 
     /* 体力恢复 */
     if (P.state !== 'atk' && P.state !== 'dash' && P.state !== 'charge') {
-      P.stamina = Math.min(P.maxStamina, P.stamina + (P.blocking ? 9 : 26) * dt);
+      P.stamina = Math.min(P.maxStamina, P.stamina + (P.blocking ? 14 : 36) * dt);
     }
     /* 内力回复 */
     P.qi = Math.min(P.maxQi, P.qi + J.WINFO.qiRegen * dt);
@@ -732,7 +735,7 @@ J.animatePlayer = function (dt, t) {
 /* ═══════════ 蓄力重击 ═══════════ */
 J.startCharge = function () {
   var P = J.P;
-  if (P.stamina < J.MOVES.h1.stamina) { return; }
+  if (P.stamina < J.MOVES.c1.stamina * 0.5) { return; }
   P.state = 'charge';
   P.tim = 0;
   P.chargeT = 0;
@@ -772,6 +775,7 @@ J.startJump = function () {
   var P = J.P;
   P.state = 'air';
   P.tim = 0;
+  P.jumpCd = 0.26;              // 冷却：防止按住/重复事件导致连跳
   P.vy = 7.6;
   P.onGround = false;
   P.airJumps = 1;
@@ -782,8 +786,8 @@ J.startJump = function () {
 /* ═══════════ 闪避 ═══════════ */
 J.startDash = function () {
   var P = J.P;
-  if (P.stamina < 18) return;
-  P.stamina -= 18;
+  if (P.stamina < 12) return;
+  P.stamina -= 12;
   P.state = 'dash'; P.tim = 0; P.dashDur = 0.36;
   var d = J.aimDir();
   // 有输入朝向输入，否则向后退

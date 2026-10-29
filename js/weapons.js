@@ -47,34 +47,34 @@ J.MOVES = {
   /* ══════ 一、轻攻击连招树 ══════ */
   l1: {
     name: '横斩', dur: 0.54, hit: [0.20, 0.33], cw: 0.70,
-    dmg: 22, kb: 1.5, lunge: 2.8, anim: 'bigSlash', type: 'light', stamina: 9,
+    dmg: 22, kb: 1.5, lunge: 2.8, anim: 'bigSlash', type: 'light', stamina: 6,
     next: { atk: 'l2', heavy: 'h1', charge: 'c1', jump: 'ja1' }
   },
   l2: {
     name: '连斩', dur: 0.50, hit: [0.18, 0.31], cw: 0.68,
-    dmg: 19, kb: 1.3, lunge: 2.6, anim: 'bigSlashR', type: 'light', stamina: 9,
+    dmg: 19, kb: 1.3, lunge: 2.6, anim: 'bigSlashR', type: 'light', stamina: 6,
     next: { atk: 'l3', heavy: 'h1', charge: 'c1' }
   },
   l3: {
     name: '回旋斩', dur: 0.66, hit: [0.24, 0.42], cw: 0.76,
-    dmg: 28, kb: 2.2, lunge: 2.4, anim: 'spinWide', type: 'light', stamina: 13,
+    dmg: 28, kb: 2.2, lunge: 2.4, anim: 'spinWide', type: 'light', stamina: 8,
     next: { atk: 'l4', heavy: 'h1' }
   },
   l4: {
     name: '断岳劈', dur: 0.86, hit: [0.30, 0.48], cw: 0.90,
-    dmg: 42, kb: 3.2, lunge: 3.0, anim: 'overhead', type: 'light', stamina: 18,
+    dmg: 42, kb: 3.2, lunge: 3.0, anim: 'overhead', type: 'light', stamina: 11,
     next: {}
   },
 
   /* ══════ 二、重攻击与蓄力分支 ══════ */
   h1: {
     name: '重劈', dur: 0.90, hit: [0.34, 0.50], cw: 0.92,
-    dmg: 44, kb: 3.4, lunge: 2.6, anim: 'overhead', type: 'heavy', stamina: 26,
+    dmg: 44, kb: 3.4, lunge: 2.6, anim: 'overhead', type: 'heavy', stamina: 17,
     guardBreak: true, poise: 1.4, next: { atk: 'b1' }
   },
   c1: {
     name: '蓄力斩', dur: 1.05, hit: [0.36, 0.58], cw: 0.94,
-    dmg: 58, kb: 4.2, lunge: 4.6, anim: 'chargeSlash', type: 'charge', stamina: 32,
+    dmg: 58, kb: 4.2, lunge: 4.6, anim: 'chargeSlash', type: 'charge', stamina: 21,
     guardBreak: true, poise: 2.0, next: { atk: 'l3' }
   },
 
@@ -88,22 +88,22 @@ J.MOVES = {
   /* ══════ 四、空中连招分支 ══════ */
   u1: {
     name: '挑斩', dur: 0.62, hit: [0.22, 0.36], cw: 0.74,
-    dmg: 24, kb: 0.9, lunge: 2.2, anim: 'launch', type: 'launch', stamina: 12,
+    dmg: 24, kb: 0.9, lunge: 2.2, anim: 'launch', type: 'launch', stamina: 8,
     launch: true, next: { atk: 'a1' }
   },
   a1: {
     name: '空中斩', dur: 0.48, hit: [0.12, 0.30], cw: 0.66,
-    dmg: 20, kb: 0.8, lunge: 3.2, anim: 'airSlash', type: 'air', stamina: 8,
+    dmg: 20, kb: 0.8, lunge: 3.2, anim: 'airSlash', type: 'air', stamina: 5,
     air: true, next: { atk: 'a2' }
   },
   a2: {
     name: '坠击', dur: 0.60, hit: [0.14, 0.36], cw: 0.86,
-    dmg: 34, kb: 3.0, lunge: 2.0, anim: 'plunge', type: 'air', stamina: 14,
+    dmg: 34, kb: 3.0, lunge: 2.0, anim: 'plunge', type: 'air', stamina: 9,
     air: true, slam: true, poise: 1.3, next: {}
   },
   ja1: {
     name: '跳斩', dur: 0.56, hit: [0.12, 0.32], cw: 0.70,
-    dmg: 24, kb: 1.6, lunge: 1.8, anim: 'airSlash', type: 'air', stamina: 10,
+    dmg: 24, kb: 1.6, lunge: 1.8, anim: 'airSlash', type: 'air', stamina: 6,
     air: true, next: { atk: 'a1' }
   },
 
@@ -117,7 +117,7 @@ J.MOVES = {
   /* ══════ 六、破防追击分支 ══════ */
   b1: {
     name: '破防追击', dur: 0.46, hit: [0.12, 0.28], cw: 0.62,
-    dmg: 28, kb: 1.2, lunge: 4.4, anim: 'bigSlash', type: 'light', stamina: 8,
+    dmg: 28, kb: 1.2, lunge: 4.4, anim: 'bigSlash', type: 'light', stamina: 5,
     next: { atk: 'l2' }
   },
 

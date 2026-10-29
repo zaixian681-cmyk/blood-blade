@@ -519,6 +519,10 @@ J.initInput = function () {
     if (!el) return;
     el.addEventListener('pointerdown', function (e) {
       e.preventDefault(); e.stopPropagation();
+      /* 防抖：某些 WebView 会把一次触摸拆成多次 pointerdown */
+      var now = (window.performance && performance.now) ? performance.now() : Date.now();
+      if (el._lastDown && now - el._lastDown < 120) return;
+      el._lastDown = now;
       IN._press[name] = 1;
       IN['hold_' + name] = true;
       if (navigator.vibrate) { try { navigator.vibrate(8); } catch (err) { } }
