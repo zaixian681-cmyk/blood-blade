@@ -438,49 +438,80 @@ J.initInput = function () {
     var l = Math.hypot(IN.mx, IN.mz);
     if (l > 1) { IN.mx /= l; IN.mz /= l; }
   }
+  /* ── 摇杆：document 级跟踪，手指移出区域也不断 ── */
+  function joyMove(lp) {
+    var dx = lp.x - IN._cx, dy = lp.y - IN._cy;
+    var d = Math.hypot(dx, dy);
+    if (d > R) { dx = dx / d * R; dy = dy / d * R; d = R; }
+    knob.style.left = (IN._cx + dx) + 'px';
+    knob.style.top = (IN._cy + dy) + 'px';
+    IN.mag = Math.min(1, d / (R * 0.82));
+    IN.mx = dx / R; IN.mz = dy / R;
+    var l = Math.hypot(IN.mx, IN.mz);
+    if (l > 1) { IN.mx /= l; IN.mz /= l; }
+  }
+
+  function onJoyMove(e) {
+    if (e.pointerId !== IN.joyId) return;
+    if (e.cancelable) e.preventDefault();
+    joyMove(J.Stage.toLocal(e.clientX, e.clientY));
+  }
+  function onJoyUp(e) {
+    if (e.pointerId !== IN.joyId) return;
+    IN.joyId = -1; IN.joyActive = false;
+    IN.mx = 0; IN.mz = 0; IN.mag = 0;
+    placeHome();
+    document.removeEventListener('pointermove', onJoyMove);
+    document.removeEventListener('pointerup', onJoyUp);
+    document.removeEventListener('pointercancel', onJoyUp);
+  }
   joy.addEventListener('pointerdown', function (e) {
-    e.preventDefault();
+    if (IN.joyId !== -1) return;
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation();
     var lp = J.Stage.toLocal(e.clientX, e.clientY);
-    IN.joyId = e.pointerId; IN.joyActive = true;
+    IN.joyId = e.pointerId;
+    IN.joyActive = true;
     IN._cx = lp.x; IN._cy = lp.y;
     base.style.left = lp.x + 'px';
     base.style.top = lp.y + 'px';
-    knob.style.left = lp.x + 'px'; knob.style.top = lp.y + 'px';
-    try { joy.setPointerCapture(e.pointerId); } catch (err) { }
+    knob.style.left = lp.x + 'px';
+    knob.style.top = lp.y + 'px';
     joyMove(lp);
+    document.addEventListener('pointermove', onJoyMove, { passive: false });
+    document.addEventListener('pointerup', onJoyUp);
+    document.addEventListener('pointercancel', onJoyUp);
   });
-  joy.addEventListener('pointermove', function (e) {
-    if (e.pointerId !== IN.joyId) return;
-    e.preventDefault();
-    joyMove(J.Stage.toLocal(e.clientX, e.clientY));
-  });
-  function joyEnd(e) {
-    if (e.pointerId !== IN.joyId) return;
-    IN.joyId = -1; IN.joyActive = false; IN.mx = IN.mz = IN.mag = 0;
-    placeHome();
-  }
-  joy.addEventListener('pointerup', joyEnd);
-  joy.addEventListener('pointercancel', joyEnd);
 
-  /* 视角拖动（画布） */
+  /* ── 视角拖动：document 级跟踪 ── */
   var lookId = -1;
-  cv.addEventListener('pointerdown', function (e) {
-    if (lookId !== -1) return;
-    lookId = e.pointerId; IN.lookId = lookId;
-    var p0 = J.Stage.toLocal(e.clientX, e.clientY);
-    IN._ox = p0.x; IN._oy = p0.y;
-    try { cv.setPointerCapture(e.pointerId); } catch (err) { }
-  });
-  cv.addEventListener('pointermove', function (e) {
+
+  function onLookMove(e) {
     if (e.pointerId !== lookId) return;
+    if (e.cancelable) e.preventDefault();
     var p = J.Stage.toLocal(e.clientX, e.clientY);
     IN.lx += (p.x - IN._ox) * 0.0072;
     IN.ly += (p.y - IN._oy) * 0.0058;
     IN._ox = p.x; IN._oy = p.y;
+  }
+  function onLookUp(e) {
+    if (e.pointerId !== lookId) return;
+    lookId = -1; IN.lookId = -1;
+    document.removeEventListener('pointermove', onLookMove);
+    document.removeEventListener('pointerup', onLookUp);
+    document.removeEventListener('pointercancel', onLookUp);
+  }
+  cv.addEventListener('pointerdown', function (e) {
+    if (lookId !== -1) return;
+    if (IN.joyId === e.pointerId) return;
+    lookId = e.pointerId;
+    IN.lookId = lookId;
+    var p0 = J.Stage.toLocal(e.clientX, e.clientY);
+    IN._ox = p0.x; IN._oy = p0.y;
+    document.addEventListener('pointermove', onLookMove, { passive: false });
+    document.addEventListener('pointerup', onLookUp);
+    document.addEventListener('pointercancel', onLookUp);
   });
-  function lookEnd(e) { if (e.pointerId === lookId) { lookId = -1; IN.lookId = -1; } }
-  cv.addEventListener('pointerup', lookEnd);
-  cv.addEventListener('pointercancel', lookEnd);
 
   /* 按钮 */
   function bindBtn(id, name) {
