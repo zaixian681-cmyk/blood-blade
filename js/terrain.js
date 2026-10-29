@@ -71,15 +71,15 @@ J.Terrain = (function () {
 
     /* 山门内侧略抬，形成"山口"感 */
     var n = (fbm(x * 0.0082, z * 0.0082, 4) - 0.5) * 2;
-    var n2 = (fbm(x * 0.028, z * 0.028, 3) - 0.5) * 2;
+    var n2 = (fbm(x * 0.030, z * 0.030, 2) - 0.5) * 2;
     var rough = ss(6, 34, base);
-    var h = base + side + n * (1.4 + rough * 9) + n2 * (0.4 + rough * 2.6);
+    var h = base + side + n * (1.2 + rough * 8) + n2 * (0.15 + rough * 1.1);
 
     /* 主路压平，保证可走 */
-    var roadW = 9;
+    var roadW = 12;
     if (d < roadW) {
-      var f = ss(roadW, roadW * 0.55, d);
-      h = lerp(h, base + n * 0.7, f);
+      var f = ss(roadW, roadW * 0.45, d);
+      h = lerp(h, base + n * 0.45, f);
     }
 
     /* 断剑谷：山顶平台 */

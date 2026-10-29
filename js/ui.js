@@ -16,6 +16,11 @@ J.UI = {
     this.$chargeWrap = document.getElementById('chargeWrap');
     this.$chargeBar = document.getElementById('chargeBar');
     this.$bUlt = document.getElementById('bUlt');
+    this.$bUse = document.getElementById('bUse');
+    this.$hint = document.getElementById('interactHint');
+    this.$banner = document.getElementById('regionBanner');
+    this.$objList = document.getElementById('objList');
+    this._objEls = {};
     this._moveT = 0; this._chargeOn = false;
     this._lastHp = -1; this._lastSp = -1; this._lastCombo = -1;
     this._toastT = 0;
@@ -97,6 +102,66 @@ J.UI = {
       this._toastT -= dt;
       if (this._toastT <= 0) this.$toast.classList.remove('on');
     }
+  },
+
+  /* ── 交互提示 ── */
+  interactHint: function (txt) {
+    if (!this.$hint) return;
+    if (txt) {
+      this.$hint.textContent = txt;
+      this.$hint.classList.add('on');
+      if (this.$bUse) this.$bUse.classList.add('on');
+    } else {
+      this.$hint.classList.remove('on');
+      if (this.$bUse) this.$bUse.classList.remove('on');
+    }
+  },
+
+  /* ── 区域名横幅 ── */
+  regionBanner: function (name) {
+    if (!this.$banner) return;
+    this.$banner.textContent = name;
+    this.$banner.classList.remove('on');
+    void this.$banner.offsetWidth;
+    this.$banner.classList.add('on');
+  },
+
+  /* ── 任务列表 ── */
+  buildObjectives: function (list) {
+    if (!this.$objList) return;
+    this.$objList.innerHTML = '';
+    this._objEls = {};
+    for (var i = 0; i < list.length; i++) {
+      var d = document.createElement('div');
+      d.className = 'oi';
+      d.textContent = list[i].name;
+      d.style.display = 'none';
+      this.$objList.appendChild(d);
+      this._objEls[list[i].id] = d;
+    }
+    this.refreshObjectives(list);
+  },
+
+  refreshObjectives: function (list) {
+    var firstOpen = -1;
+    for (var i = 0; i < list.length; i++) {
+      if (!list[i].done) { firstOpen = i; break; }
+    }
+    for (var j = 0; j < list.length; j++) {
+      var el = this._objEls[list[j].id];
+      if (!el) continue;
+      var o = list[j];
+      /* 只显示已完成的和当前目标，其余隐藏，保持界面干净 */
+      var show = o.done || j === firstOpen;
+      el.style.display = show ? 'block' : 'none';
+      el.classList.toggle('ok', !!o.done);
+      el.classList.toggle('cur', j === firstOpen && !o.done);
+    }
+  },
+
+  objectiveDone: function (name) {
+    if (J.Obj) this.refreshObjectives(J.Obj.list);
+    this.flashText('✓ ' + name);
   },
 
   moveName: function (txt) {

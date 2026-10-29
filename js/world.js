@@ -285,19 +285,24 @@ J.World = (function () {
      断崖吊桥
      ═══════════════════════════════════════════════ */
   function bridgeY(z) {
-    var t = (z - J.Terrain.GORGE_Z0) / (J.Terrain.GORGE_Z1 - J.Terrain.GORGE_Z0);
+    var z0 = J.Terrain.GORGE_Z0, z1 = J.Terrain.GORGE_Z1;
+    var t = (z - z0) / (z1 - z0);
     var tc = Math.max(0, Math.min(1, t));
-    var sag = Math.sin(tc * Math.PI) * 2.1;
-    var base = (11.2 + (10.2 - 11.2) * tc) - sag;
-    /* 两端向岸边地形收拢 */
-    if (t < 0) base = 11.2 + (-t) * 0.15;
-    if (t > 1) base = 10.2 - (t - 1) * 0.2;
+    /* 两端高度直接取岸边地形高度，保证无缝衔接 */
+    /* 往崖外 10 米采样，避开峡谷底部 */
+    var zN = z0 - 10, zS = z1 + 10;
+    var hN = hAt(J.Terrain.bridgeCenterX(zN), zN);   // 北岸
+    var hS = hAt(J.Terrain.bridgeCenterX(zS), zS);   // 南岸
+    var sag = Math.sin(tc * Math.PI) * 1.5;
+    var base = hN + (hS - hN) * tc - sag;
+    if (t < 0) base = hN;
+    if (t > 1) base = hS;
     return base;
   }
 
   function buildBridge() {
-    var z0 = J.Terrain.GORGE_Z0 - 4, z1 = J.Terrain.GORGE_Z1 + 4;
-    var N = 30;
+    var z0 = J.Terrain.GORGE_Z0 - 8, z1 = J.Terrain.GORGE_Z1 + 8;
+    var N = 34;
     var span = z1 - z0;
     for (var i = 0; i < N; i++) {
       var t = (i + 0.5) / N;
@@ -807,6 +812,55 @@ J.World = (function () {
     J.S.add(W.dust);
 
     return W;
+  };
+
+  /* ══ 放置可交互物 ══ */
+  W.placeInteractables = function () {
+    if (!J.Interact) return;
+
+    /* 山寨物资箱 */
+    if (W.cratePos) {
+      for (var i = 0; i < W.cratePos.length; i++) {
+        var c = W.cratePos[i];
+        J.Interact.addChest(c.x, c.z, {
+          id: 'villageCrate' + i,
+          ry: rnd(0, 3.14),
+          reward: i === 1 ? '获得 铜钱 ×80' : '获得 铜钱 ×45'
+        });
+      }
+    }
+
+    /* 隐藏山洞宝箱 */
+    if (W.cavePos) {
+      J.Interact.addChest(W.cavePos.x + 1.0, W.cavePos.z + 1.2, {
+        id: 'caveChest',
+        reward: '获得 武学残页 · 断岳式'
+      });
+      J.Interact.addStele(W.cavePos.x - 1.6, W.cavePos.z + 2.0, '石壁刻着模糊的字：「刀过之处，山亦可断。」', 0);
+    }
+
+    /* 古寺大雄宝殿内的秘籍 */
+    if (W.templeCenter) {
+      var t = W.templeCenter;
+      J.Interact.addChest(t.x + 4.2, t.z + 3.4, {
+        id: 'secretTemple',
+        ry: 0.4,
+        reward: '获得 武学秘籍 · 太玄刀诀'
+      });
+      J.Interact.addStele(t.x - 2.0, t.z + 5.0, '断碑曰：「太玄之刃，非持刀者不可御。」', 0.3);
+    }
+
+    /* 入口山门石碑 */
+    var ez = 178, ex = J.Terrain.pathX(ez) + 7;
+    J.Interact.addStele(ex, ez, '青崖山 · 断剑谷\n山道险绝，桥上慎行。', -0.4);
+
+    /* 桥头石碑 */
+    var bz = 34, bx = J.Terrain.pathX(bz) + 6;
+    J.Interact.addStele(bx, bz, '断崖吊桥\n此行向北，黑风寨在此山中。', 0.2);
+
+    /* 断剑谷石碑 */
+    var vz = -200, vx = J.Terrain.pathX(vz) + 9;
+    J.Interact.addStele(vx, vz, '断剑谷\n昔年刀客尽折于此。', 0);
   };
 
   /* ══ 区域判定 ══ */

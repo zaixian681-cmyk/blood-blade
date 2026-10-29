@@ -376,9 +376,9 @@ J.IN = {
   lx: 0, ly: 0,                     // 视角增量
   keys: {},
   btn: { atk: 0, heavy: 0, dash: 0, lock: 0 },
-  _press: { atk: 0, heavy: 0, dash: 0, jump: 0, ult: 0 },
-  _pressT: { atk: 0, heavy: 0, dash: 0, jump: 0, ult: 0 },
-  held: { atk: 0, heavy: 0, dash: 0, jump: 0, ult: 0 },
+  _press: { atk: 0, heavy: 0, dash: 0, jump: 0, ult: 0, use: 0 },
+  _pressT: { atk: 0, heavy: 0, dash: 0, jump: 0, ult: 0, use: 0 },
+  held: { atk: 0, heavy: 0, dash: 0, jump: 0, ult: 0, use: 0 },
   PRESS_TTL: 260,          // 未消费的按下超过这个时间就作废
   joyActive: false, joyId: -1, lookId: -1, guardHeld: false, parryPress: 0,
   _ox: 0, _oy: 0, _cx: 0, _cy: 0
@@ -405,6 +405,7 @@ J.initInput = function () {
     if (e.code === 'KeyK' && !IN.held.heavy) { IN.held.heavy = 1; IN._press.heavy = 1; IN._pressT.heavy = performance.now(); IN.hold_heavy = true; }
     if (e.code === 'Space') { e.preventDefault(); if (!IN.held.dash) { IN.held.dash = 1; IN._press.dash = 1; IN._pressT.dash = performance.now(); } }
     if (e.code === 'ShiftLeft' && !IN.held.jump) { IN.held.jump = 1; IN._press.jump = 1; IN._pressT.jump = performance.now(); }
+    if (e.code === 'KeyF' && !IN.held.use) { IN.held.use = 1; IN._press.use = 1; IN._pressT.use = performance.now(); }
     if ((e.code === 'KeyE' || e.code === 'KeyR' || e.code === 'KeyQ') && !IN.held.ult) { IN.held.ult = 1; IN._press.ult = 1; IN._pressT.ult = performance.now(); }
   });
   window.addEventListener('keyup', function (e) {
@@ -414,6 +415,7 @@ J.initInput = function () {
     if (e.code === 'Space') IN.held.dash = 0;
     if (e.code === 'ShiftLeft') IN.held.jump = 0;
     if (e.code === 'KeyE' || e.code === 'KeyR' || e.code === 'KeyQ') IN.held.ult = 0;
+    if (e.code === 'KeyF') IN.held.use = 0;
   });
 
   /* 鼠标视角（桌面调试） */
@@ -565,6 +567,7 @@ J.initInput = function () {
   bindBtn('bDash', 'dash');
   bindBtn('bJump', 'jump');
   bindBtn('bUlt', 'ult');
+  bindBtn('bUse', 'use');
 
   /* 格挡：按住生效 */
   var gEl = document.getElementById('bGuard');

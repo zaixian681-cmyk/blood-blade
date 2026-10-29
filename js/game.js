@@ -20,7 +20,10 @@ J.boot = function () {
     J.initPlayer();
     J.FX.init();
     J.spawnFoes();
+    J._bambooSpawned = true;
     J.UI.init();
+    if (J.Obj) J.Obj.init();
+    if (J.World.placeInteractables) J.World.placeInteractables();
     J.startLoop();
     setTimeout(function () { bootEl.classList.add('gone'); }, 260);
   } catch (e) {
@@ -291,6 +294,7 @@ J.updatePlayer = function (dt, t) {
     var wantJump = J.pressed('jump'); if (wantJump) J.consume('jump');
     var wantSkill = false;
     var wantUlt = J.pressed('ult'); if (wantUlt) J.consume('ult');
+    var wantUse = J.pressed('use'); if (wantUse) J.consume('use');
     var heavyHeld = !!IN.heavyHeld;
 
     if (P.state === 'exec') {
@@ -372,7 +376,7 @@ J.updatePlayer = function (dt, t) {
       var isRun = IN.mag > 0.86 && P.stamina > 8;
       mspd = isRun ? 7.4 : 4.3;
       var slp = J.Terrain.slopeAt(P.pos.x, P.pos.z);
-      mspd *= (1 - Math.min(0.62, slp * 0.78));
+      mspd *= (1 - Math.min(0.45, slp * 0.55));
       if (P.blocking) mspd *= 0.42;
       var wx = IN.mx, wz = IN.mz;
       var len = Math.hypot(wx, wz) || 1;
@@ -432,7 +436,7 @@ J.updatePlayer = function (dt, t) {
       var bb = nearBox[bi];
       if (bb.x0 > P.pos.x + 0.30 || bb.x1 < P.pos.x - 0.30) continue;
       if (bb.z0 > P.pos.z + 0.30 || bb.z1 < P.pos.z - 0.30) continue;
-      if (bb.y1 > P.pos.y + 1.25) continue;        // 高过膝盖的不算地板
+      if (bb.y1 > P.pos.y + 1.45) continue;        // 高过膝盖的不算地板
       if (bb.y1 > boxTop) boxTop = bb.y1;
     }
     if (boxTop > gy) gy = boxTop;
@@ -871,7 +875,7 @@ J.startJump = function () {
   P.tim = 0;
   P.jumpCd = 0.26;              // 冷却：防止按住/重复事件导致连跳
   P.jumpLatch = true;           // 锁：必须松手才能再次起跳
-  P.vy = 7.6;
+  P.vy = 9.4;
   P.onGround = false;
   P.airJumps = 1;
   P.blocking = false;
@@ -1060,6 +1064,8 @@ J.startLoop = function () {
       J.updateSlash(dt);
       J.World.update(dt, J.clock, J.P.pos);
       J.updateCamera(raw);
+      J.Interact.update(dt, J.P.pos);
+      J.Obj.update(dt, J.P);
       J.UI.update(raw);
       J.updateSun(J.P.pos.x, J.P.pos.z);
       J.sky.position.copy(J.C.position);

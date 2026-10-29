@@ -127,6 +127,34 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
  18%{opacity:1;transform:translate(-50%,-88%) scale(1.14)}
  100%{opacity:0;transform:translate(-50%,-190%) scale(.94)}}
 
+/* 交互提示 / 区域横幅 / 任务列表 */
+#interactHint{position:absolute;left:50%;top:56%;transform:translateX(-50%);
+  font-size:15px;letter-spacing:3px;color:#f0e0b8;opacity:0;transition:opacity .18s;
+  text-shadow:0 0 12px rgba(0,0,0,.95),0 0 20px rgba(255,190,90,.4);white-space:nowrap}
+#interactHint.on{opacity:1}
+#interactHint::before{content:'◇ ';color:#e8c060}
+
+#regionBanner{position:absolute;left:50%;top:26%;transform:translate(-50%,-50%);
+  font-size:34px;letter-spacing:16px;color:#f0e2c0;text-indent:16px;
+  opacity:0;pointer-events:none;
+  text-shadow:0 0 30px rgba(0,0,0,.9),0 0 60px rgba(255,200,120,.35)}
+#regionBanner.on{animation:regIn 3.0s ease-out forwards}
+@keyframes regIn{0%{opacity:0;letter-spacing:26px}18%{opacity:1;letter-spacing:16px}
+  72%{opacity:1;letter-spacing:16px}100%{opacity:0;letter-spacing:12px}}
+
+#objList{position:absolute;left:16px;top:96px;width:186px;font-size:12px;
+  letter-spacing:1px;color:#d8ccb0;opacity:.9;line-height:1.7;
+  text-shadow:0 1px 3px rgba(0,0,0,.9)}
+#objList .oi{opacity:.55;transition:opacity .3s}
+#objList .oi.cur{opacity:1;color:#f0dca8}
+#objList .oi.ok{opacity:.42;color:#8aa87a}
+#objList .oi.ok::before{content:'✓ '}
+#objList .oi:not(.ok)::before{content:'· '}
+
+#bUse{right:186px;bottom:196px;width:56px;height:56px;font-size:16px;
+  display:none;box-shadow:inset 0 0 0 2px rgba(255,220,150,.85),0 0 22px rgba(255,190,90,.6)}
+#bUse.on{display:flex}
+
 /* 横屏提示 */
 #rotateTip{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
   z-index:60;pointer-events:none;background:rgba(0,0,0,.76);text-align:center;
@@ -160,6 +188,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
   <div id="moveName"></div>
   <div id="flash"></div>
   <div id="chargeWrap"><div id="chargeBar"></div></div>
+  <div id="interactHint"></div>
+  <div id="regionBanner"></div>
+  <div id="objList"></div>
 
   <div id="joy"></div>
   <div id="acts">
@@ -168,6 +199,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
     <div class="btn" id="bDash">闪</div>
     <div class="btn" id="bJump">跳</div>
     <div class="btn" id="bGuard">挡</div>
+    <div class="btn" id="bUse">拾</div>
     <div class="btn ult" id="bUlt">绝</div>
   </div>
 </div>
@@ -180,18 +212,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 <div id="err"></div>
 
 <script src="js/three.min.js"></script>
-<script src="js/core.js?v=93"></script>
-<script src="js/terrain.js?v=93"></script>
-<script src="js/world.js?v=93"></script>
-<script src="js/fx.js?v=93"></script>
-<script src="js/slash.js?v=93"></script>
-<script src="js/weapon.js?v=93"></script>
-<script src="js/weapons.js?v=93"></script>
-<script src="js/combat.js?v=93"></script>
-<script src="js/hero.js?v=93"></script>
-<script src="js/foe.js?v=93"></script>
-<script src="js/ui.js?v=93"></script>
-<script src="js/game.js?v=93"></script>
+<script src="js/core.js?v=97"></script>
+<script src="js/terrain.js?v=97"></script>
+<script src="js/world.js?v=97"></script>
+<script src="js/fx.js?v=97"></script>
+<script src="js/slash.js?v=97"></script>
+<script src="js/weapon.js?v=97"></script>
+<script src="js/weapons.js?v=97"></script>
+<script src="js/combat.js?v=97"></script>
+<script src="js/hero.js?v=97"></script>
+<script src="js/foe.js?v=97"></script>
+<script src="js/interact.js?v=97"></script>
+<script src="js/objectives.js?v=97"></script>
+<script src="js/ui.js?v=97"></script>
+<script src="js/game.js?v=97"></script>
 <script>
 J.showRotateTip = function () {
   var el = document.getElementById('rotateTip');
