@@ -372,7 +372,7 @@ J.IN = {
   lx: 0, ly: 0,                     // 视角增量
   keys: {},
   btn: { atk: 0, heavy: 0, dash: 0, lock: 0 },
-  _press: { atk: 0, heavy: 0, dash: 0, lock: 0 },
+  _press: { atk: 0, heavy: 0, dash: 0, jump: 0, skill: 0, fin: 0, lock: 0 },
   joyActive: false, joyId: -1, lookId: -1, guardHeld: false, parryPress: 0,
   _ox: 0, _oy: 0, _cx: 0, _cy: 0
 };
@@ -387,11 +387,14 @@ J.initInput = function () {
     if (e.repeat) return;
     IN.keys[e.code] = 1;
     if (e.code === 'KeyJ') IN._press.atk = 1;
-    if (e.code === 'KeyK') IN._press.heavy = 1;
+    if (e.code === 'KeyK') { IN._press.heavy = 1; IN.hold_heavy = true; }
     if (e.code === 'Space') { IN._press.dash = 1; e.preventDefault(); }
     if (e.code === 'KeyQ') IN._press.lock = 1;
+    if (e.code === 'ShiftLeft') { IN._press.jump = 1; }
+    if (e.code === 'KeyE') IN._press.skill = 1;
+    if (e.code === 'KeyR') IN._press.fin = 1;
   });
-  window.addEventListener('keyup', function (e) { IN.keys[e.code] = 0; });
+  window.addEventListener('keyup', function (e) { IN.keys[e.code] = 0; if (e.code === 'KeyK') IN.hold_heavy = false; });
 
   /* 鼠标视角（桌面调试） */
   var cv = J.R.domElement, mdown = false;
@@ -485,12 +488,23 @@ J.initInput = function () {
   function bindBtn(id, name) {
     var el = document.getElementById(id);
     if (!el) return;
-    el.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); IN._press[name] = 1; });
-    el.addEventListener('pointerup', function (e) { e.stopPropagation(); });
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      IN._press[name] = 1;
+      IN['hold_' + name] = true;
+      if (navigator.vibrate) { try { navigator.vibrate(8); } catch (err) { } }
+    });
+    var up = function (e) { if (e) e.stopPropagation(); IN['hold_' + name] = false; };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('pointerleave', up);
   }
   bindBtn('bAtk', 'atk');
   bindBtn('bHeavy', 'heavy');
   bindBtn('bDash', 'dash');
+  bindBtn('bJump', 'jump');
+  bindBtn('bSkill', 'skill');
+  bindBtn('bFin', 'fin');
   bindBtn('bLock', 'lock');
 
   /* 格挡：按住生效 */

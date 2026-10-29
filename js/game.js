@@ -2,16 +2,6 @@
    game.js — 玩家 / 战斗 / 相机 / 主循环
    ═══════════════════════════════════════════════ */
 
-/* ── 招式表 ── */
-var MOVES = {
-  l1: { dur: 0.44, h: [0.13, 0.25], dmg: 15, range: 3.0, arc: 1.25, kb: 1.1, lunge: 3.2, next: { atk: 'l2', heavy: 'h1' }, sw: 1 },
-  l2: { dur: 0.40, h: [0.10, 0.21], dmg: 13, range: 3.0, arc: 1.25, kb: 0.9, lunge: 3.0, next: { atk: 'l3', heavy: 'lift' }, sw: -1 },
-  l3: { dur: 0.50, h: [0.15, 0.28], dmg: 19, range: 3.2, arc: 1.35, kb: 1.4, lunge: 3.4, next: { atk: 'l4', heavy: 'h1' }, sw: 1 },
-  l4: { dur: 0.66, h: [0.17, 0.31], dmg: 30, range: 3.4, arc: 1.5, kb: 2.6, lunge: 4.0, next: {}, sw: -1, finisher: true },
-  h1: { dur: 0.72, h: [0.25, 0.39], dmg: 38, range: 3.3, arc: 1.1, kb: 2.8, lunge: 3.0, next: { atk: 'l3' }, sw: 1, heavy: true, guardBreak: true },
-  lift: { dur: 0.58, h: [0.19, 0.31], dmg: 24, range: 3.1, arc: 0.95, kb: 1.0, lunge: 2.4, next: { atk: 'air' }, sw: 1, launch: true }
-};
-
 J.boot = function () {
   var bootEl = document.getElementById('boot');
   try {
@@ -51,6 +41,8 @@ J.initPlayer = function () {
     pos: new THREE.Vector3(W.spawn.x, J.Terrain.heightAt(W.spawn.x, W.spawn.z), W.spawn.z),
     yaw: W.spawn.yaw, vy: 0, onGround: true,
     hp: 240, maxHp: 240, stamina: 100, maxStamina: 100,
+    qi: 70, maxQi: J.WINFO.maxQi, chargeT: 0, airJumps: 1,
+    moveDmgMul: 1, heavyHeld: false,
     state: 'idle', tim: 0, move: null, moveId: '', hitSet: [],
     camYaw: W.spawn.yaw + Math.PI, camPitch: 0.07, camDist: 4.05,
     target: null, targetIdx: 0,
@@ -88,6 +80,8 @@ J.initPlayer = function () {
         }
       }
       P.stamina = Math.max(0, P.stamina - 6);
+      /* 弹反成功：自动接下反击（长刀·回身斩） */
+      if (P.state !== 'air') J.Combat.start('p1', { force: true });
       return;
     }
     if (P.blocking) {
@@ -127,24 +121,7 @@ J.playerDie = function () {
   J.UI.toast('倒 下 了', 2.2);
 };
 
-/* ═══════════ 攻击 ═══════════ */
-J.startAttack = function (id) {
-  var P = J.P, M = MOVES[id];
-  if (!M) return;
-  P.state = 'atk';
-  P.tim = 0;
-  P.move = M;
-  P.moveId = id;
-  P.hitSet = [];
-  P.blocking = false;
-  P.stamina = Math.max(0, P.stamina - (M.heavy ? 26 : 8));
-
-  // 起手位移（向朝向/锁定方向冲刺）
-  var dir = J.aimDir();
-  P.dashDir.copy(dir).multiplyScalar(M.lunge);
-  P.dashT = 0.11;
-};
-
+/* ═══════════ 攻击（交给 J.Combat） ═══════════ */
 J.aimDir = function () {
   var P = J.P;
   // 锁定时朝目标
@@ -160,46 +137,6 @@ J.aimDir = function () {
     return new THREE.Vector3(Math.sin(wy), 0, Math.cos(wy));
   }
   return new THREE.Vector3(Math.sin(P.yaw), 0, Math.cos(P.yaw));
-};
-
-J.doHitCheck = function () {
-  var P = J.P, M = P.move;
-  if (!M) return;
-  var fx = Math.sin(P.yaw), fz = Math.cos(P.yaw);
-  for (var i = 0; i < J.foes.length; i++) {
-    var f = J.foes[i];
-    if (f.dead || f.gone || P.hitSet.indexOf(f) >= 0) continue;
-    var dx = f.pos.x - P.pos.x, dz = f.pos.z - P.pos.z;
-    var d = Math.hypot(dx, dz);
-    if (d > M.range + 0.35) continue;
-    if (Math.abs(f.pos.y - P.pos.y) > 2.0) continue;
-    var dot = (dx * fx + dz * fz) / (d || 1);
-    if (dot < Math.cos(M.arc)) continue;
-
-    /* 命中 */
-    P.hitSet.push(f);
-    var isHeavy = !!M.heavy;
-    var crit = Math.random() < (M.finisher ? 0.30 : 0.14);
-    var dmg = M.dmg * (crit ? 1.75 : 1) * (1 + Math.min(0.6, (J.comboCount || 0) * 0.035));
-    dmg = Math.round(dmg);
-
-    var res = f.hurt(dmg, P.pos, M.kb, isHeavy);
-    var hp3 = new THREE.Vector3(f.pos.x, f.pos.y + 1.75, f.pos.z);
-    if (res === 'block') {
-      J.FX.dmgText(hp3, '格挡', 'block');
-      J.FX.shake(0.07, 0.1);
-      J.FX.hitstop(0.045);
-    } else {
-      J.FX.dmgText(hp3, (crit ? '暴击 ' : '') + dmg, crit ? 'crit' : (isHeavy ? 'heavy' : ''));
-      J.FX.spark(f.pos.x, 1.25, f.pos.z, isHeavy ? 24 : 14, crit ? 0xffb060 : 0xffd9a0, isHeavy ? 1.8 : 1.1);
-      J.FX.ring(f.pos.x, 1.15, f.pos.z, 0xffe0b0, isHeavy ? 3.0 : 1.8);
-      J.FX.hitstop(isHeavy ? 0.085 : 0.045);
-      J.FX.shake(isHeavy ? 0.20 : 0.085, isHeavy ? 0.26 : 0.14);
-      J.comboCount = (J.comboCount || 0) + 1;
-      J.comboTimer = 2.4;
-      if (Math.random() < 0.35) J.FX.spark(f.pos.x, 0.35, f.pos.z, 8, 0xb0a080, 0.7);
-    }
-  }
 };
 
 /* ═══════════ 每帧更新玩家 ═══════════ */
@@ -246,59 +183,67 @@ J.updatePlayer = function (dt, t) {
     P.tim += dt;
     if (P.state === 'hurt' && P.tim >= P.hurtT) { P.state = 'idle'; }
 
+    /* ══ 状态机（长刀体系） ══ */
+    var wantJump = J.pressed('jump');
+    var wantSkill = J.pressed('skill');
+    var wantFin = J.pressed('fin');
+    var heavyHeld = !!IN.heavyHeld;
+
     if (P.state === 'atk') {
-      var M = P.move;
-      // 判定窗口
-      if (M && P.tim >= M.h[0] && P.tim <= M.h[1]) J.doHitCheck();
-      // 取消窗口接下一招
-      var inCancel = M && P.tim >= M.h[1] * 0.85;
-      if (wantAtk || wantHeavy) {
-        if (inCancel) {
-          var nxt = wantHeavy ? M.next.heavy : M.next.atk;
-          if (nxt && MOVES[nxt]) J.startAttack(nxt);
-          else if (P.tim >= M.dur) { P.state = 'idle'; }
-        } else {
-          P.buffered = wantHeavy ? 'heavy' : 'atk';
-          P.bufferT = 0.28;
-        }
+      J.Combat.update(dt);
+
+      /* 攻击中仍可闪避取消后摇（长刀后摇长，必须有这个出口） */
+      var m0 = P.move;
+      if (wantDash && m0 && P.tim / P.moveDur > 0.62 && P.stamina >= 18) {
+        J.startDash();
       }
-      // 闪避取消攻击后摇
-      if (wantDash && P.tim > M.h[0] * 0.9 && P.stamina >= 18) { J.startDash(); }
-      if (P.tim >= M.dur && P.state === 'atk') { P.state = 'idle'; P.move = null; }
+      /* 输入缓冲 */
+      if (P.state === 'atk' && (wantAtk || wantHeavy || wantJump)) {
+        P.buffered = wantAtk ? 'atk' : (wantHeavy ? 'heavy' : 'jump');
+        P.bufferT = 0.30;
+      }
     }
     else if (P.state === 'dash') {
-      if (P.tim >= P.dashDur) { P.state = 'idle'; }
+      if (wantAtk && P.tim > 0.10) { J.Combat.start('d1', { force: true }); }
+      else if (P.tim >= P.dashDur) { P.state = 'idle'; }
+    }
+    else if (P.state === 'charge') {
+      J.updateCharge(dt, wantHeavy, dt);
     }
     else if (P.state === 'hurt') {
-      // 受击不可操作
+      /* 受击不可操作 */
+    }
+    else if (P.state === 'air') {
+      /* 空中：只允许空中攻击 */
+      if (wantAtk && P.stamina >= 8) J.Combat.start('ja1');
+      else if (wantJump && P.airJumps > 0) { P.airJumps--; P.vy = 6.4; J.FX.spark(P.pos.x, P.pos.y + 0.4, P.pos.z, 8, 0xcfe0ff, 0.8); }
     }
     else {
       /* idle / run */
-      if (wantAtk && P.stamina >= 8) { J.startAttack('l1'); }
-      else if (wantHeavy && P.stamina >= 26) { J.startAttack('h1'); }
-      else if (wantDash && P.stamina >= 18) { J.startDash(); }
-      else {
-        // 格挡 / 招架
+      /* 终结技 > 技能 > 蓄力 > 轻击 > 重击 */
+      if (wantFin && J.Combat.canFinisher()) {
+        J.Combat.start('fin');
+      } else if (wantSkill && J.Combat.canSkill()) {
+        J.Combat.start('skill');
+      } else if (wantHeavy) {
+        J.startCharge();
+      } else if (wantAtk) {
+        J.Combat.start(J.hasBreakTarget() ? 'b1' : 'l1');
+      } else if (wantDash && P.stamina >= 18) {
+        J.startDash();
+      } else if (wantJump && P.onGround) {
+        J.startJump();
+      } else {
         if (IN.parryPress) { IN.parryPress = 0; P.parryWindow = 0.22; }
         P.blocking = guardHeld && P.stamina > 5;
         P.state = 'idle';
       }
     }
 
-    /* 缓冲输入执行 */
-    if (P.bufferT > 0) {
+    /* 缓冲输入在 idle 时立即执行 */
+    if (P.bufferT > 0 && P.state !== 'atk') {
       P.bufferT -= dt;
-      if (P.state === 'atk' && P.move) {
-        var Mc = P.move;
-        if (P.tim >= Mc.h[1] * 0.85) {
-          var nx = P.buffered === 'heavy' ? Mc.next.heavy : Mc.next.atk;
-          if (nx && MOVES[nx]) { J.startAttack(nx); P.buffered = null; P.bufferT = 0; }
-        }
-      } else if (P.state === 'idle') {
-        if (P.buffered === 'atk') J.startAttack('l1');
-        else if (P.buffered === 'heavy') J.startAttack('h1');
-        P.buffered = null; P.bufferT = 0;
-      }
+      if (P.bufferT <= 0) P.buffered = null;
     }
 
     /* 招架窗口衰减 */
@@ -357,15 +302,35 @@ J.updatePlayer = function (dt, t) {
     if (P.pos.y < gy2) P.pos.y = gy2;
 
     /* 体力恢复 */
-    if (P.state !== 'atk' && P.state !== 'dash') {
+    if (P.state !== 'atk' && P.state !== 'dash' && P.state !== 'charge') {
       P.stamina = Math.min(P.maxStamina, P.stamina + (P.blocking ? 9 : 26) * dt);
     }
+    /* 内力回复 */
+    P.qi = Math.min(P.maxQi, P.qi + J.WINFO.qiRegen * dt);
 
-    /* 地形贴地 */
+    /* 地形贴地 / 跳跃重力 */
     var gy = J.Terrain.heightAt(P.pos.x, P.pos.z);
-    P.onGround = P.pos.y <= gy + 0.35;
-    if (P.vy <= 0.01) P.pos.y = gy;
-    else { P.vy -= 26 * dt; P.pos.y += P.vy * dt; if (P.pos.y < gy) { P.pos.y = gy; P.vy = 0; } }
+    if (P.pos.y > gy + 0.03 || P.vy > 0.01) {
+      P.vy -= 27 * dt;
+      P.pos.y += P.vy * dt;
+      if (P.pos.y <= gy) {
+        var impact = -P.vy;
+        P.pos.y = gy; P.vy = 0;
+        if (!P.onGround) {
+          if (impact > 5) {
+            J.FX.spark(P.pos.x, gy + 0.15, P.pos.z, 10, 0xd8d0c0, 0.9);
+            J.FX.shake(0.05, 0.1);
+          }
+          if (P.state === 'air') { P.state = 'idle'; P.tim = 0; }
+          P.airJumps = 1;
+        }
+        P.onGround = true;
+      } else P.onGround = false;
+    } else {
+      P.pos.y = gy; P.vy = 0; P.onGround = true;
+      if (P.state === 'air') { P.state = 'idle'; P.tim = 0; }
+      P.airJumps = 1;
+    }
 
     /* 碰撞 */
     J.Col.resolve(P.pos, 0.38, 1.7, P.pos.y);
@@ -433,53 +398,172 @@ J.animatePlayer = function (dt, t) {
     }
   } else if (st === 'atk') {
     var M = P.move;
-    var pr = M ? Math.min(1, P.tim / M.dur) : 0;
-    var sw = M ? M.sw : 1;
-    var ph = P.tim / (M ? M.h[1] : 0.3);   // 0..1 到判定结束
-    var wind = Math.min(1, ph / 1.0);
+    var pr = M ? Math.min(1, P.tim / P.moveDur) : 0;
+    var ph = M ? Math.min(1, (P.tim / P.moveDur) / Math.max(0.001, M.hit[1])) : 0;
+    /* 蓄势 0~0.58，发力 0.58~1 */
+    var windP = Math.min(1, ph / 0.58);
+    var strikeP = Math.max(0, Math.min(1, (ph - 0.58) / 0.42));
+    var anim = M ? M.anim : 'bigSlash';
 
-    // 起手蓄力（0~0.55）→ 挥出（0.55~1）
-    var windP = Math.min(1, ph / 0.55);
-    var strikeP = Math.max(0, Math.min(1, (ph - 0.55) / 0.45));
+    function lerpP(a0, b0) { return a0 + (b0 - a0) * strikeP; }
 
-    if (M && M.heavy) {
-      tgt.arX = -0.2 - 2.3 * windP + 4.0 * strikeP;
-      tgt.arZ = -0.3 * sw - 0.6 * windP * sw + 0.9 * strikeP * sw;
-      tgt.arEl = -0.5 - 0.6 * windP + 1.1 * strikeP;
-      tgt.alX = -1.0 * windP + 0.4 * strikeP;
-      tgt.torsoY = (0.7 * windP - 1.5 * strikeP) * sw;
-      tgt.torsoX = -0.18 * windP + 0.42 * strikeP;
-      tgt.wpnRotX = 0.2 + 1.0 * windP - 0.7 * strikeP;
+    if (anim === 'bigSlash') {
+      /* 大刀横斩：自右后向左前 */
+      tgt.arX = -0.45 - 0.55 * windP + 0.75 * strikeP;
+      tgt.arZ = -0.30 - 1.55 * windP + 2.75 * strikeP;
+      tgt.arEl = -0.55 - 0.45 * windP + 0.75 * strikeP;
+      tgt.alX = -1.15 * windP + 0.85 * strikeP;
+      tgt.alZ = 0.55 + 0.30 * windP;
+      tgt.torsoY = -1.05 * windP + 1.95 * strikeP;
+      tgt.torsoX = -0.10 * windP + 0.34 * strikeP;
+      tgt.hipsRotY = -0.45 * windP + 0.80 * strikeP;
+      tgt.wpnRotX = 1.35 + 0.45 * windP - 0.30 * strikeP;
+      tgt.squat = 0.05 * windP;
+      tgt.legL = 0.20 * windP; tgt.legR = -0.24 * windP;
+      tgt.kneeL = 0.15; tgt.kneeR = 0.28 * windP;
+    } else if (anim === 'bigSlashR') {
+      /* 反手回斩：自左前向右后 */
+      tgt.arX = -0.45 - 0.35 * windP + 0.65 * strikeP;
+      tgt.arZ = 0.85 * windP - 2.55 * strikeP;
+      tgt.arEl = -0.45 - 0.55 * windP + 0.70 * strikeP;
+      tgt.alX = -0.55 - 0.75 * windP + 0.65 * strikeP;
+      tgt.alZ = 0.30;
+      tgt.torsoY = 0.95 * windP - 1.95 * strikeP;
+      tgt.torsoX = -0.06 * windP + 0.28 * strikeP;
+      tgt.hipsRotY = 0.42 * windP - 0.78 * strikeP;
+      tgt.wpnRotX = 1.20 - 0.25 * windP;
+      tgt.legL = -0.18 * windP; tgt.legR = 0.22 * windP;
+    } else if (anim === 'spinWide') {
+      /* 回旋斩：躯干抡一整圈 */
+      var spin = strikeP < 0.05 ? 0 : Math.min(1, strikeP / 0.75);
+      tgt.torsoY = -0.55 * windP + spin * 4.2;
+      tgt.hipsRotY = -0.30 * windP + spin * 3.4;
+      tgt.arX = -0.30 - 0.30 * windP;
+      tgt.arZ = -1.30 * (1 - spin) + 1.10 * spin;
+      tgt.arEl = -0.30;
+      tgt.alX = -0.55 * windP;
+      tgt.alZ = 0.85;
+      tgt.torsoX = 0.10 + 0.10 * strikeP;
+      tgt.wpnRotX = 1.45 - 0.10 * strikeP;
       tgt.squat = 0.06 * windP;
-    } else if (M && M.launch) {
-      tgt.arX = 0.6 * windP - 2.6 * strikeP;
-      tgt.arZ = -0.5 * sw;
-      tgt.arEl = -0.4;
-      tgt.torsoX = 0.3 * windP - 0.55 * strikeP;
-      tgt.torsoY = 0.5 * windP - 0.8 * strikeP;
-      tgt.wpnRotX = 0.1 - 0.9 * strikeP;
-      tgt.hipsY = 0.86 - 0.08 * windP + 0.10 * strikeP;
+    } else if (anim === 'overhead') {
+      /* 竖劈：举过头顶再劈下 */
+      tgt.arX = -0.6 - 2.35 * windP + 3.55 * strikeP;
+      tgt.arZ = -0.10 - 0.25 * windP;
+      tgt.arEl = -0.60 - 0.55 * windP + 0.95 * strikeP;
+      tgt.alX = -0.4 - 2.05 * windP + 3.10 * strikeP;
+      tgt.alZ = 0.18;
+      tgt.torsoX = -0.32 * windP + 0.62 * strikeP;
+      tgt.torsoY = 0.08 * windP - 0.10 * strikeP;
+      tgt.headX = -0.12 * windP + 0.20 * strikeP;
+      tgt.wpnRotX = 1.05 + 1.15 * windP - 1.55 * strikeP;
+      tgt.squat = 0.10 * windP - 0.04 * strikeP;
+      tgt.kneeL = 0.22 * windP; tgt.kneeR = 0.26 * windP;
+    } else if (anim === 'chargeSlash') {
+      /* 蓄力斩：长时间蓄势，然后一记全范围横扫 */
+      var cw2 = Math.min(1, ph / 0.62);
+      tgt.arX = -0.5 - 0.7 * cw2 + 0.9 * strikeP;
+      tgt.arZ = -0.4 - 2.0 * cw2 + 3.2 * strikeP;
+      tgt.arEl = -0.5 - 0.9 * cw2 + 1.0 * strikeP;
+      tgt.alX = -1.5 * cw2 + 1.0 * strikeP;
+      tgt.alZ = 0.75 + 0.4 * cw2;
+      tgt.torsoY = -1.35 * cw2 + 2.6 * strikeP;
+      tgt.torsoX = -0.22 * cw2 + 0.45 * strikeP;
+      tgt.hipsRotY = -0.55 * cw2 + 1.05 * strikeP;
+      tgt.wpnRotX = 1.55 + 0.55 * cw2 - 0.35 * strikeP;
+      tgt.squat = 0.16 * cw2 - 0.05 * strikeP;
+      tgt.kneeL = 0.30 * cw2; tgt.kneeR = 0.34 * cw2;
+      tgt.legL = 0.18 * cw2; tgt.legR = -0.20 * cw2;
+    } else if (anim === 'launch') {
+      /* 挑斩：自下而上 */
+      tgt.arX = 0.85 * windP - 3.10 * strikeP;
+      tgt.arZ = -0.35 - 0.35 * windP;
+      tgt.arEl = -0.25 - 0.35 * windP + 0.35 * strikeP;
+      tgt.alX = 0.55 * windP - 1.55 * strikeP;
+      tgt.alZ = 0.35;
+      tgt.torsoX = 0.42 * windP - 0.68 * strikeP;
+      tgt.wpnRotX = -0.35 + 0.35 * windP;
+      tgt.hipsY = 0.86 - 0.14 * windP + 0.14 * strikeP;
+      tgt.kneeL = 0.55 * windP; tgt.kneeR = 0.50 * windP;
+    } else if (anim === 'airSlash') {
+      /* 空中斩 */
+      tgt.arX = -0.35 - 1.05 * windP + 1.55 * strikeP;
+      tgt.arZ = -1.25 * windP + 2.25 * strikeP;
+      tgt.arEl = -0.35 - 0.55 * windP + 0.65 * strikeP;
+      tgt.alX = -0.9 - 0.6 * windP;
+      tgt.alZ = 0.62;
+      tgt.torsoY = -0.85 * windP + 1.55 * strikeP;
+      tgt.torsoX = 0.10 + 0.15 * strikeP;
+      tgt.legL = 0.75; tgt.legR = -0.35; tgt.kneeL = 1.05;
+      tgt.wpnRotX = 1.55;
+      tgt.hipsY = 0.86;
+    } else if (anim === 'plunge') {
+      /* 下劈：空中收刀再砸下 */
+      tgt.arX = -0.6 - 2.3 * windP + 3.6 * strikeP;
+      tgt.arZ = -0.05;
+      tgt.arEl = -0.5 - 0.6 * windP + 1.0 * strikeP;
+      tgt.alX = -0.5 - 1.9 * windP + 2.9 * strikeP;
+      tgt.torsoX = -0.35 * windP + 0.75 * strikeP;
+      tgt.legL = 0.45; tgt.legR = -0.55; tgt.kneeL = 0.85;
+      tgt.wpnRotX = 1.0 + 1.3 * windP - 1.7 * strikeP;
+      tgt.hipsY = 0.86;
+    } else if (anim === 'finisherBlade') {
+      /* 终结：超大幅蓄势 + 一记贯穿 */
+      var fw = Math.min(1, ph / 0.66);
+      tgt.arX = -0.5 - 1.0 * fw + 1.4 * strikeP;
+      tgt.arZ = -0.3 - 2.35 * fw + 3.9 * strikeP;
+      tgt.arEl = -0.45 - 1.0 * fw + 1.15 * strikeP;
+      tgt.alX = -1.7 * fw + 1.3 * strikeP;
+      tgt.alZ = 0.85 + 0.45 * fw;
+      tgt.torsoY = -1.6 * fw + 3.1 * strikeP;
+      tgt.torsoX = -0.28 * fw + 0.52 * strikeP;
+      tgt.hipsRotY = -0.7 * fw + 1.3 * strikeP;
+      tgt.wpnRotX = 1.6 + 0.7 * fw - 0.5 * strikeP;
+      tgt.squat = 0.20 * fw - 0.08 * strikeP;
+      tgt.kneeL = 0.36 * fw; tgt.kneeR = 0.40 * fw;
+      tgt.legL = 0.26 * fw; tgt.legR = -0.30 * fw;
+      tgt.headX = -0.15 * fw;
     } else {
-      // 轻击：横斩
-      tgt.arX = -0.3 - 1.15 * windP + 1.7 * strikeP;
-      tgt.arZ = (-0.9 * windP + 1.5 * strikeP) * sw;
-      tgt.arEl = -0.35 - 0.75 * windP + 0.85 * strikeP;
-      tgt.alX = -0.25 - 0.7 * windP + 0.5 * strikeP;
-      tgt.alZ = 0.25;
-      tgt.torsoY = (-0.85 * windP + 1.35 * strikeP) * sw;
-      tgt.torsoX = 0.05 + 0.12 * strikeP;
-      tgt.wpnRotX = 0.35 - 0.25 * strikeP;
-      tgt.wpnRotZ = 0.15 + 0.3 * windP;
-      tgt.hipsRotY = (-0.3 * windP + 0.45 * strikeP) * sw;
-      tgt.legL = sw * 0.15; tgt.legR = -sw * 0.15;
+      tgt.arX = -0.3 - 1.0 * windP + 1.5 * strikeP;
+      tgt.arZ = -0.9 * windP + 1.5 * strikeP;
+      tgt.torsoY = -0.7 * windP + 1.2 * strikeP;
     }
-    // 结束回正
-    if (pr > 0.85) {
-      var back = (pr - 0.85) / 0.15;
-      tgt.arX = J.U.lerp(tgt.arX, -0.15, back);
-      tgt.torsoY = J.U.lerp(tgt.torsoY, 0, back);
+
+    /* 收招回正 */
+    if (pr > 0.86) {
+      var back2 = (pr - 0.86) / 0.14;
+      tgt.arX = J.U.lerp(tgt.arX, -0.2, back2);
+      tgt.arZ = J.U.lerp(tgt.arZ, -0.12, back2);
+      tgt.torsoY = J.U.lerp(tgt.torsoY, 0, back2);
+      tgt.hipsRotY = J.U.lerp(tgt.hipsRotY, 0, back2);
     }
-  } else if (st === 'dash') {
+  } else if (st === 'charge') {
+    /* 蓄力：双手举刀过顶，身体下沉后仰 */
+    var cq = Math.min(1, (P.chargeT || 0) / 0.85);
+    var shake2 = Math.sin(t * 34) * 0.012 * cq;
+    tgt.arX = -0.7 - 2.1 * cq + shake2;
+    tgt.arZ = -0.25 - 0.35 * cq;
+    tgt.arEl = -0.55 - 0.5 * cq;
+    tgt.alX = -0.5 - 1.75 * cq;
+    tgt.alZ = 0.30 + 0.2 * cq;
+    tgt.torsoX = -0.36 * cq;
+    tgt.headX = -0.18 * cq;
+    tgt.squat = 0.20 * cq;
+    tgt.kneeL = 0.42 * cq; tgt.kneeR = 0.46 * cq;
+    tgt.legL = 0.20 * cq; tgt.legR = -0.24 * cq;
+    tgt.wpnRotX = 1.05 + 1.35 * cq;
+    tgt.hipsY = 0.86 - 0.14 * cq;
+  } else if (st === 'air') {
+    var rising = P.vy > 0;
+    tgt.arX = -0.5; tgt.arZ = -0.3;
+    tgt.alX = -0.5; tgt.alZ = 0.35;
+    tgt.legL = rising ? 0.55 : 0.2;
+    tgt.legR = rising ? -0.45 : -0.1;
+    tgt.kneeL = rising ? 1.0 : 0.45;
+    tgt.kneeR = rising ? 0.55 : 0.25;
+    tgt.torsoX = rising ? -0.12 : 0.14;
+    tgt.wpnRotX = 1.45;
+    } else if (st === 'dash') {
     var dp = P.tim / P.dashDur;
     tgt.squat = Math.sin(dp * Math.PI) * 0.22;
     tgt.torsoX = 0.55 * Math.sin(dp * Math.PI);
@@ -568,6 +652,56 @@ J.animatePlayer = function (dt, t) {
   }
 };
 
+/* ═══════════ 蓄力重击 ═══════════ */
+J.startCharge = function () {
+  var P = J.P;
+  if (P.stamina < J.MOVES.h1.stamina) { return; }
+  P.state = 'charge';
+  P.tim = 0;
+  P.chargeT = 0;
+  P.blocking = false;
+  P.move = null;
+  P.moveId = '';
+  J.UI.chargeStart();
+};
+
+J.updateCharge = function (dt, held) {
+  var P = J.P;
+  P.chargeT += dt;
+  var ratio = Math.min(1, P.chargeT / 0.80);
+  J.UI.chargeRatio(ratio);
+  /* 蓄力时若被打断/移动则取消 */
+  if (P.state !== 'charge') return;
+
+  if (!held) {
+    if (P.chargeT < 0.28) {
+      J.Combat.start('h1');            // 短按 = 普通重劈
+    } else {
+      J.Combat.start('c1', { dmgMul: 0.78 + ratio * 0.55 });
+      J.FX.shake(0.12 + ratio * 0.1, 0.24);
+    }
+    J.UI.chargeEnd();
+    return;
+  }
+  if (P.chargeT > 1.6) {              // 蓄满自动放
+    J.Combat.start('c1', { dmgMul: 1.33 });
+    J.FX.shake(0.22, 0.28);
+    J.UI.chargeEnd();
+  }
+};
+
+/* ═══════════ 跳跃 ═══════════ */
+J.startJump = function () {
+  var P = J.P;
+  P.state = 'air';
+  P.tim = 0;
+  P.vy = 7.6;
+  P.onGround = false;
+  P.airJumps = 1;
+  P.blocking = false;
+  J.FX.spark(P.pos.x, P.pos.y + 0.1, P.pos.z, 6, 0xd8e0f0, 0.6);
+};
+
 /* ═══════════ 闪避 ═══════════ */
 J.startDash = function () {
   var P = J.P;
@@ -588,6 +722,17 @@ J.startDash = function () {
   P.invuln = 0.30;
   var dirAng = Math.atan2(d.x, d.z);
   P.yaw = dirAng;
+};
+
+/* 附近是否有被破防的敌人（用于自动追击） */
+J.hasBreakTarget = function () {
+  var P = J.P;
+  for (var i = 0; i < J.foes.length; i++) {
+    var f = J.foes[i];
+    if (f.dead || f.gone || f.state !== 'break') continue;
+    if (Math.hypot(f.pos.x - P.pos.x, f.pos.z - P.pos.z) < 4.2) return true;
+  }
+  return false;
 };
 
 /* ═══════════ 锁定 ═══════════ */

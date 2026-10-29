@@ -225,7 +225,7 @@
       this.M.root.scale.setScalar(1);
     },
 
-    hurt: function (dmg, fromPos, power, isHeavy) {
+    hurt: function (dmg, fromPos, power, isHeavy, launch) {
       if (this.dead) return false;
       // 盾卫正面格挡
       if (this.cfg.shield && this.state !== 'stagger') {
@@ -252,6 +252,7 @@
       this.knock.x += dx / dl * kb * 3.2;
       this.knock.z += dz / dl * kb * 3.2;
       if (isHeavy) { this.vy = Math.max(this.vy, 3.6 * power); }
+      if (launch) { this.vy = Math.max(this.vy, 5.4); this.pos.y = Math.max(this.pos.y, 0.12); }
 
       if (this.hp <= 0) { this.die(); return 'kill'; }
 
@@ -399,6 +400,10 @@
           break;
 
         case 'recover':
+          if (this.tim >= this.dur) this.enter('chase');
+          break;
+
+        case 'break':
           if (this.tim >= this.dur) this.enter('chase');
           break;
 
