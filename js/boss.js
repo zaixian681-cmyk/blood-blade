@@ -492,8 +492,8 @@ J.Boss = (function () {
     if (B.onPhase) B.onPhase(foe, idx);
     J.Cine.phaseBreak(foe, '第' + ph.ch + '阶段 · ' + ph.name, '萧无极：' + (idx === 1 ? '让你看看秘藏真正的样子。' : '这一刀，替你父亲送你。'));
     J.UI && J.UI.bossPhase && J.UI.bossPhase(foe);
-    J.slowMo = 0.35;
-    setTimeout(function () { J.slowMo = 1; }, 700);
+    J.slowMo = 0.6;
+    setTimeout(function () { J.slowMo = 1; }, 420);
   };
 
   /* ══ 每帧：刀气波 / 光环 / 血影寿命 ══ */

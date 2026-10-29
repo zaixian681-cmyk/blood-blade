@@ -5,7 +5,7 @@
 J.Terrain = (function () {
 
   var SIZE = 480;
-  var SEG = 104;
+  var SEG = 150;
   var HALF = SIZE / 2;
 
   function h2(x, y) { var n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); }
@@ -242,7 +242,23 @@ J.Terrain = (function () {
   }
 
   function buildRiver() {
-    var g = new THREE.PlaneGeometry(SIZE, 210, 1, 1);
+    /* 沿河道生成的带状水面：贴着河走，不会像大平板一样切穿地形 */
+    var RN = 90, RZ0 = -110, RZ1 = 190, RW = 10.5;
+    var rp = [], ruv = [], ridx = [];
+    for (var ri = 0; ri <= RN; ri++) {
+      var rz = RZ0 + (RZ1 - RZ0) * ri / RN;
+      var rx0 = riverX(rz);
+      rp.push(rx0 - RW, 7.2, rz, rx0 + RW, 7.2, rz);
+      ruv.push(0, ri / RN, 1, ri / RN);
+    }
+    for (var rk = 0; rk < RN; rk++) {
+      var ra = rk * 2;
+      ridx.push(ra, ra + 1, ra + 3, ra, ra + 3, ra + 2);
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(rp, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(ruv, 2));
+    g.setIndex(ridx);
     var m = new THREE.Mesh(g, new THREE.ShaderMaterial({
       transparent: true, depthWrite: false,
       uniforms: { uTime: { value: 0 }, uCam: { value: new THREE.Vector3() } },
@@ -270,8 +286,7 @@ J.Terrain = (function () {
         '}'
       ].join('\n')
     }));
-    m.rotation.x = -Math.PI / 2;
-    m.position.set(0, 7.2, 25);
+    m.position.set(0, 0, 0);
     m.renderOrder = 2;
     return m;
   }

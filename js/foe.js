@@ -185,6 +185,8 @@
     if (override) { cfg = Object.assign({}, cfg, override); }
     this.type = type; this.cfg = cfg;
     this.M = buildFoe(TYPE[type], cfg);
+    /* 合并同材质的静态子网格：26 个 mesh → 约 12 个，显著减少 draw call */
+    if (J.optimizeHeroModel) J.optimizeHeroModel(this.M.root);
     J.S.add(this.M.root);
 
     this.pos = new THREE.Vector3(x, 0, z);
@@ -211,13 +213,20 @@
 
     /* 受击闪白：给所有材质克隆一份 */
     this.flashMats = [];
+    /* 按原材质去重克隆：一个敌人只克隆 5 个材质，而不是每个 mesh 一个 */
+    var _mmap = {};
     this.M.root.traverse(function (o) {
       if (o.isMesh && o.material && o.material.color) {
-        var m = o.material.clone();
-        m.userData.baseColor = m.color.clone();
-        m.userData.baseEmissive = m.emissive ? m.emissive.clone() : null;
+        var key = o.material.uuid;
+        var m = _mmap[key];
+        if (!m) {
+          m = o.material.clone();
+          m.userData.baseColor = m.color.clone();
+          m.userData.baseEmissive = m.emissive ? m.emissive.clone() : null;
+          _mmap[key] = m;
+          this.flashMats.push(m);
+        }
         o.material = m;
-        this.flashMats.push(m);
       }
     }.bind(this));
   }
@@ -515,14 +524,14 @@
 
       /* 碰撞 */
       var before = { x: this.pos.x, z: this.pos.z };
-      J.Col.resolve(this.pos, 0.42, 1.7, this.pos.y);
+      J.Col.resolve(this.pos, 0.5, 1.72, this.pos.y);
       // 与其他敌人分离
       for (var f = 0; f < J.foes.length; f++) {
         var o = J.foes[f];
         if (o === this || o.dead || o.gone) continue;
         var ddx = this.pos.x - o.pos.x, ddz = this.pos.z - o.pos.z;
         var dd = Math.hypot(ddx, ddz);
-        var minD = 0.85;
+        var minD = 1.05;
         if (dd < minD && dd > 0.001) {
           var push = (minD - dd) / dd * 0.5;
           this.pos.x += ddx * push; this.pos.z += ddz * push;
@@ -534,7 +543,7 @@
 
       /* 距离剔除：超过 46 米不渲染；34 米外不投阴影 */
       var distToCam = J.C ? Math.hypot(this.pos.x - J.C.position.x, this.pos.z - J.C.position.z) : 0;
-      if (distToCam > 46) { if (M.root.visible) M.root.visible = false; return; }
+      if (distToCam > 40) { if (M.root.visible) M.root.visible = false; return; }
       if (!M.root.visible) M.root.visible = true;
       var castOn = distToCam < 34;
       if (this._castOn !== castOn) {

@@ -76,8 +76,8 @@ J.Combat = (function () {
       }
       if (id === 'soulMove') {
         /* 太玄 · 一刀：全身刀魂炸开 */
-        J.slowMo = 0.42;
-        setTimeout(function () { J.slowMo = 1; }, 900);
+        J.slowMo = 0.55;
+        setTimeout(function () { J.slowMo = 1; }, 420);
         J.Cine && J.Cine.flash(0xffe8f0, 0.5, 0.5);
         J.FX.shake(0.24, 0.5);
         J.FX.ring(P.pos.x, P.pos.y + 0.9, P.pos.z, 0xffb8d8, 7.5);
@@ -214,7 +214,7 @@ J.Combat = (function () {
           f.enter('break', m.type === 'finisher' ? 2.2 : 1.6);
           J.FX.ring(f.pos.x, f.pos.y + 1.2, f.pos.z, 0xffc060, 3.4);
           J.FX.spark(f.pos.x, f.pos.y + 1.2, f.pos.z, 26, 0xffd070, 2.0);
-          J.FX.hitstop(0.10);
+          J.FX.hitstop(0.05);
           J.UI.flashText('破 防');
           P.breakTarget = f;
         }
@@ -238,8 +238,8 @@ J.Combat = (function () {
       if (isHeavy) J.FX.ring(f.pos.x, f.pos.y + 1.1, f.pos.z, 0xffe0b0, 3.2);
 
       /* 打击感：顿帧与震屏按武器重量分级 */
-      var hs = isHeavy ? 0.085 : 0.042;
-      if (m.type === 'finisher') hs = 0.16;
+      var hs = isHeavy ? 0.052 : 0.026;
+      if (m.type === 'finisher') hs = 0.075;
       J.FX.hitstop(hs);
       J.FX.shake(isHeavy ? 0.22 : 0.09, isHeavy ? 0.26 : 0.14);
       if (isHeavy) J.FX.fovPunch(m.type === 'finisher' ? 6.5 : 3.2);

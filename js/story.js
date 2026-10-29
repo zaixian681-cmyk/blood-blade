@@ -690,7 +690,7 @@ J.Story = (function () {
     J.UI.refreshQuests();
     S.save();
 
-    J.slowMo = 0.45;
+    J.slowMo = 0.62;
     setTimeout(function () {
       J.slowMo = 1;
       /* 终局镜头 → 山与晨走上来 → 最后一段对话 */

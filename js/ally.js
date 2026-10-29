@@ -415,7 +415,7 @@ J.Ally = (function () {
     /* 贴地 + 碰撞 */
     var gy = J.Terrain.heightAt(A.pos.x, A.pos.z);
     A.pos.y = J.U.damp(A.pos.y, gy, 18, dt);
-    J.Col.resolve(A.pos, 0.36, 1.7, A.pos.y);
+    J.Col.resolve(A.pos, 0.44, 1.72, A.pos.y);
     /* 与玩家分离 */
     var dpp = Math.hypot(P.pos.x - A.pos.x, P.pos.z - A.pos.z);
     if (dpp < 0.85 && dpp > 0.001) {

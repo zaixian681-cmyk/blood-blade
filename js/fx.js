@@ -154,7 +154,9 @@ J.FX = {
 
   /* ── 顿帧 / 震屏 ── */
   hitstop: function (sec) {
-    this.hitstopT = Math.max(this.hitstopT, sec);
+    /* 顿帧：不叠加、不超时，避免连击时"一顿一顿"看起来像掉帧 */
+    if (this.hitstopT > 0.025) return;
+    this.hitstopT = Math.min(0.055, sec);
   },
   /* 镜头 FOV 冲击：重刀命中时猛地一收 */
   fovPunch: function (amt) {
@@ -169,6 +171,9 @@ J.FX = {
 
   /* ── 飘字 ── */
   dmgText: function (worldPos, text, cls) {
+    /* 上限保护：同时存在的飘字太多会明显掉帧 */
+    var live = document.getElementById('hud').querySelectorAll('.dmg').length;
+    if (live > 16) return;
     var v = worldPos.clone().project(J.C);
     if (v.z > 1) return;
     var el = document.createElement('div');
@@ -185,11 +190,13 @@ J.FX = {
   update: function (dt, t) {
     var F = this;
 
-    /* 顿帧 */
+    /* 顿帧：原来是 0.045 倍速，几乎等于卡住；改成 0.32 的"粘刀"手感 */
     if (F.hitstopT > 0) {
       F.hitstopT -= dt;
-      J.timeScale = 0.045;
-      if (F.hitstopT <= 0) J.timeScale = J.slowMo || 1;
+      J.timeScale = 0.32;
+      if (F.hitstopT <= 0) J.timeScale = (J.slowMo || 1);
+    } else if (J.timeScale !== (J.slowMo || 1) && !F._holdTs) {
+      J.timeScale = J.slowMo || 1;
     }
 
     /* 拖尾淡出 */

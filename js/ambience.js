@@ -226,6 +226,13 @@ J.Amb = (function () {
     buildRays();
   };
 
+  /* 低配模式：关掉流雾与落叶，保留远山 */
+  A.setLight = function (on) {
+    if (mistGroup) mistGroup.visible = !on;
+    if (leafPoint) leafPoint.visible = !on;
+    if (rayGroup) rayGroup.visible = !on;
+  };
+
   /* ── 每帧 ── */
   A.update = function (dt, t, P) {
     if (!P) return;

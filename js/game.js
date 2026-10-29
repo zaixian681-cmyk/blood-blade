@@ -106,8 +106,8 @@ J.initPlayer = function () {
       }
       P.stamina = Math.max(0, P.stamina - 6);
       if (J.Soul) J.Soul.add(13, { heavy: true });
-      J.slowMo = 0.45;
-      setTimeout(function () { J.slowMo = 1; }, 220);
+      J.slowMo = 0.62;
+      setTimeout(function () { J.slowMo = 1; }, 170);
       /* 弹反成功：自动接下反击（长刀·回身斩） */
       if (P.state !== 'air') J.Combat.start('p1', { force: true });
       return;
@@ -160,8 +160,8 @@ J.perfectDodge = function (fromPos) {
   var P = J.P;
   if (P._perfectCd > 0) return;
   P._perfectCd = 0.5;
-  J.slowMo = 0.38;
-  setTimeout(function () { J.slowMo = 1; }, 300);
+  J.slowMo = 0.6;
+  setTimeout(function () { J.slowMo = 1; }, 200);
   if (J.Soul) J.Soul.add(15, { heavy: true });
   J.FX.spark(P.pos.x, P.pos.y + 1.2, P.pos.z, 26, 0xbfe8ff, 1.9);
   J.FX.ring(P.pos.x, P.pos.y + 0.5, P.pos.z, 0x9fd8ff, 4.2);
@@ -449,7 +449,7 @@ J.updatePlayer = function (dt, t) {
     }
 
     /* 再贴地一次（移动后） */
-    var gy2 = J.Terrain.heightAt(P.pos.x, P.pos.z);
+    var gy2 = J.Terrain.heightAt(P.pos.x, P.pos.z) + 0.02;
     if (P.pos.y < gy2) P.pos.y = gy2;
 
     /* 体力恢复 */
@@ -506,7 +506,7 @@ J.updatePlayer = function (dt, t) {
     }
 
     /* 碰撞 */
-    J.Col.resolve(P.pos, 0.38, 1.7, P.pos.y);
+    J.Col.resolve(P.pos, 0.46, 1.72, P.pos.y);
     P.pos.x = J.U.clamp(P.pos.x, -W_LIM, W_LIM);
     P.pos.z = J.U.clamp(P.pos.z, -W_LIM, W_LIM);
   }
@@ -1052,15 +1052,31 @@ J.updateCamera = function (dt) {
   var dl = Math.hypot(dirx, diry, dirz) || 1;
   dirx /= dl; diry /= dl; dirz /= dl;
 
-  // 防穿墙
+  // 防穿墙（碰撞盒）
   var hitD = J.Col.rayDist(focus.x, focus.y, focus.z, dirx, diry, dirz, dist + 0.4);
   if (hitD < dist) dist = Math.max(0.9, hitD - 0.25);
+
+  /* 防穿地形：沿视线采样高度，撞到山坡就把镜头拉近 */
+  var TN = 10;
+  for (var si = 1; si <= TN; si++) {
+    var tt = dist * (si / TN);
+    var sx = focus.x + dirx * tt;
+    var sy = focus.y + diry * tt;
+    var sz = focus.z + dirz * tt;
+    var gh = J.Terrain.heightAt(sx, sz) + 0.85;
+    if (sy < gh) {
+      dist = Math.max(1.05, dist * ((si - 1) / TN) - 0.05);
+      break;
+    }
+  }
 
   var camPos = _V1.set(
     focus.x + dirx * dist,
     focus.y + diry * dist,
     focus.z + dirz * dist
   );
+  var camGh = J.Terrain.heightAt(camPos.x, camPos.z) + 0.62;
+  if (camPos.y < camGh) camPos.y = camGh;
   if (camPos.y < 0.45) camPos.y = 0.45;
 
   // 平滑
@@ -1068,6 +1084,10 @@ J.updateCamera = function (dt) {
   P._camPos.x = J.U.damp(P._camPos.x, camPos.x, 26, dt);
   P._camPos.y = J.U.damp(P._camPos.y, camPos.y, 26, dt);
   P._camPos.z = J.U.damp(P._camPos.z, camPos.z, 26, dt);
+
+  /* 镜头贴到脸上时隐藏角色，避免穿模 */
+  var nearHide = dist < 1.55;
+  if (P.model.root.visible === nearHide) P.model.root.visible = !nearHide;
 
   C.position.copy(P._camPos);
   var so = J.FX.shakeOffset();
@@ -1094,6 +1114,9 @@ J.startLoop = function () {
     if (raw > 0.12) raw = 0.12;
     var dt = raw * (J.timeScale || 1);
     J.rawDt = raw;
+    /* 实测帧率（用于自适应画质） */
+    var inst = 1 / Math.max(0.001, raw);
+    J.fps = J.fps === undefined ? inst : (J.fps * 0.92 + inst * 0.08);
     J.clock += dt;
     J.dt = dt;
 
@@ -1118,6 +1141,9 @@ J.startLoop = function () {
       J.UI.updateQuestHint(J.P);
       J.Minimap.update(dt, J.P);
       J.updateSun(J.P.pos.x, J.P.pos.z);
+      /* 阴影 30Hz 更新：视觉几乎无差，省一半阴影绘制 */
+      J._shadowTick = (J._shadowTick || 0) + 1;
+      J.R.shadowMap.needsUpdate = (J._shadowTick & 1) === 0;
       J.sky.position.copy(J.C.position);
     } catch (e) {
       if (!J._loopErr) {
@@ -1130,8 +1156,16 @@ J.startLoop = function () {
     }
     J.R.render(J.S, J.C);
 
-    /* 性能自适应 */
+    /* 性能自适应：先用像素比，再关氛围粒子 */
     if (raw > 0.028) slowFrames++; else if (slowFrames > 0) slowFrames -= 0.5;
+    if (J.fps < 45 && J._lowFpsT === undefined) J._lowFpsT = 0;
+    if (J.fps < 45) J._lowFpsT = (J._lowFpsT || 0) + 1; else J._lowFpsT = 0;
+    if (J._lowFpsT > 90 && !J._light) {
+      J._light = true;
+      J.R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.0));
+      if (J.Amb && J.Amb.setLight) J.Amb.setLight(true);
+      if (J.sun) J.sun.shadow.mapSize.set(768, 768);
+    }
     if (slowFrames > 50 && quality > 0) {
       quality--;
       slowFrames = 0;

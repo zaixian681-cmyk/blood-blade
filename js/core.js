@@ -3,7 +3,7 @@
    渲染 / 天空 / 光照 / 几何合并 / 碰撞 / 输入
    ═══════════════════════════════════════════════ */
 var J = window.J = {
-  ver: 211,
+  ver: 217,
   clock: 0, dt: 0, timeScale: 1,
   world: null, hero: null, foes: [], fx: null, ui: null,
   paused: false,
@@ -76,21 +76,23 @@ J.Stage = {
 J.initRenderer = function () {
   var cv = document.getElementById('gl');
   var r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: 'high-performance' });
-  J.dprCap = 1.5;
+  J.dprCap = 1.25;
 r.setPixelRatio(Math.min(window.devicePixelRatio || 1, J.dprCap));
   r.setSize(J.Stage.W || window.innerWidth, J.Stage.H || window.innerHeight, false);
   r.shadowMap.enabled = true;
   r.shadowMap.type = THREE.PCFSoftShadowMap;
+  r.shadowMap.autoUpdate = false;
+  r.shadowMap.needsUpdate = true;
   r.outputColorSpace = THREE.SRGBColorSpace;
   r.toneMapping = THREE.ACESFilmicToneMapping;
-  r.toneMappingExposure = 0.98;
+  r.toneMappingExposure = 1.02;
   J.R = r;
 
   var sc = new THREE.Scene();
   sc.fog = new THREE.FogExp2(0xc8d6dc, 0.0026);
   J.S = sc;
 
-  var cam = new THREE.PerspectiveCamera(62, (J.Stage.W || window.innerWidth) / (J.Stage.H || window.innerHeight), 0.1, 900);
+  var cam = new THREE.PerspectiveCamera(62, (J.Stage.W || window.innerWidth) / (J.Stage.H || window.innerHeight), 0.12, 560);
   cam.position.set(0, 4, 10);
   J.C = cam;
 
@@ -138,20 +140,20 @@ J.buildSky = function (topCol, midCol, botCol) {
 /* ── 光照：斜阳低角度，长影子，最有武侠味 ── */
 J.initLights = function () {
   /* 天空填充光：冷蓝的天光 + 暖褐的地面反射 */
-  var hemi = new THREE.HemisphereLight(0xa8bccc, 0x8a7860, 0.62);
+  var hemi = new THREE.HemisphereLight(0xa8bccc, 0x8a7860, 0.74);
   J.S.add(hemi);
 
   /* 主光：低角度暖阳（傍晚），产生长阴影 */
-  var sun = new THREE.DirectionalLight(0xffc182, 2.45);
+  var sun = new THREE.DirectionalLight(0xffc182, 2.55);
   sun.position.set(88, 122, 118);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.mapSize.set(768, 768);
   var s = 88;
   sun.shadow.camera.left = -s; sun.shadow.camera.right = s;
   sun.shadow.camera.top = s; sun.shadow.camera.bottom = -s;
   sun.shadow.camera.near = 50; sun.shadow.camera.far = 420;
   sun.shadow.bias = -0.0008;
-  sun.shadow.normalBias = 0.030;
+  sun.shadow.normalBias = 0.045;
   J.S.add(sun);
   J.S.add(sun.target);
   J.sun = sun;
