@@ -3,7 +3,7 @@
    渲染 / 天空 / 光照 / 几何合并 / 碰撞 / 输入
    ═══════════════════════════════════════════════ */
 var J = window.J = {
-  ver: 208,
+  ver: 211,
   clock: 0, dt: 0, timeScale: 1,
   world: null, hero: null, foes: [], fx: null, ui: null,
   paused: false,

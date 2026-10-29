@@ -245,19 +245,28 @@ J.Terrain = (function () {
     var g = new THREE.PlaneGeometry(SIZE, 210, 1, 1);
     var m = new THREE.Mesh(g, new THREE.ShaderMaterial({
       transparent: true, depthWrite: false,
-      uniforms: { uTime: { value: 0 } },
+      uniforms: { uTime: { value: 0 }, uCam: { value: new THREE.Vector3() } },
       vertexShader: 'varying vec2 vUv; varying vec3 vW; void main(){ vUv=uv; vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }',
       fragmentShader: [
-        'uniform float uTime; varying vec2 vUv; varying vec3 vW;',
+        'uniform float uTime; uniform vec3 uCam; varying vec2 vUv; varying vec3 vW;',
         'float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}',
         'float n2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);',
         '  return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}',
         'void main(){',
+        '  vec3 V = normalize(uCam - vW);',
+        '  float fres = pow(1.0 - clamp(V.y,0.0,1.0), 3.2);',
         '  vec2 p = vW.xz*0.10;',
         '  float w = n2(p + vec2(uTime*0.05, uTime*0.16))*0.6 + n2(p*2.6 - vec2(uTime*0.2,0.0))*0.4;',
-        '  vec3 c = mix(vec3(0.09,0.20,0.22), vec3(0.30,0.52,0.50), w);',
-        '  c += vec3(1.0,0.94,0.78) * smoothstep(0.74,0.99,w) * 0.55;',
-        '  gl_FragColor = vec4(c, 0.92);',
+        '  float w2 = n2(p*7.0 + vec2(uTime*0.42, -uTime*0.30));',
+        '  vec3 deepC = vec3(0.055,0.135,0.155);',
+        '  vec3 shalC = vec3(0.215,0.415,0.415);',
+        '  vec3 c = mix(deepC, shalC, w);',
+        '  c = mix(c, vec3(0.60,0.70,0.76), fres*0.55);',
+        '  c += vec3(1.0,0.95,0.80) * smoothstep(0.80,0.995,w) * 0.38;',
+        '  float spec = pow(max(0.0, w2 - 0.55), 3.0) * (0.25 + fres*0.9);',
+        '  c += vec3(1.0,0.92,0.74) * spec * 1.25;',
+        '  c *= 0.94 + 0.12 * n2(p*1.6 + uTime*0.03);',
+        '  gl_FragColor = vec4(c, 0.94);',
         '}'
       ].join('\n')
     }));
@@ -360,7 +369,10 @@ J.Terrain = (function () {
     },
 
     update: function (dt, t) {
-      if (T.river) T.river.material.uniforms.uTime.value = t;
+      if (T.river) {
+        T.river.material.uniforms.uTime.value = t;
+        if (J.C) T.river.material.uniforms.uCam.value.copy(J.C.position);
+      }
       if (T.waterfall) {
         T.waterfall.mat.uniforms.uTime.value = t;
         T.waterfall.mat2.uniforms.uTime.value = t * 1.3;

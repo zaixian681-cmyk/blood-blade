@@ -271,8 +271,13 @@ J.Ally = (function () {
     var P = J.P;
     if (!P) return;
 
-    /* 影子与名牌 */
+    /* 影子与名牌（离镜头太近就隐藏，避免大字糊屏） */
     M.tag.position.y = 2.1 + Math.sin(t * 1.5) * 0.035;
+    if (J.C) {
+      var dc = Math.hypot(A.pos.x - J.C.position.x, A.pos.z - J.C.position.z);
+      var showTag = dc > 5.5;
+      if (M.tag.visible !== showTag) M.tag.visible = showTag;
+    }
 
     /* 闪白 */
     if (A.flashT > 0) A.flashT -= dt;
@@ -382,8 +387,9 @@ J.Ally = (function () {
     } else {
       /* 跟随 */
       var fx = P.pos.x - Math.sin(P.camYaw) * 0 , fz = 0;
-      var sideX = Math.cos(P.yaw) * 1.5, sideZ = -Math.sin(P.yaw) * 1.5;
-      var backX = -Math.sin(P.yaw) * 1.9, backZ = -Math.cos(P.yaw) * 1.9;
+      /* 站在主角右前方（镜头在身后，这样永远不会糊在镜头上） */
+      var sideX = Math.cos(P.yaw) * 1.9, sideZ = -Math.sin(P.yaw) * 1.9;
+      var backX = Math.sin(P.yaw) * 1.1, backZ = Math.cos(P.yaw) * 1.1;
       var tx = P.pos.x + backX + sideX;
       var tz = P.pos.z + backZ + sideZ;
       var dT = Math.hypot(tx - A.pos.x, tz - A.pos.z);
