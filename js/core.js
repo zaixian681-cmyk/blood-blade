@@ -76,7 +76,8 @@ J.Stage = {
 J.initRenderer = function () {
   var cv = document.getElementById('gl');
   var r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: 'high-performance' });
-  r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  J.dprCap = 1.5;
+r.setPixelRatio(Math.min(window.devicePixelRatio || 1, J.dprCap));
   r.setSize(J.Stage.W || window.innerWidth, J.Stage.H || window.innerHeight, false);
   r.shadowMap.enabled = true;
   r.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -142,7 +143,7 @@ J.initLights = function () {
   var sun = new THREE.DirectionalLight(0xffc48a, 2.15);
   sun.position.set(130, 52, -150);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(1024, 1024);
   var s = 92;
   sun.shadow.camera.left = -s; sun.shadow.camera.right = s;
   sun.shadow.camera.top = s; sun.shadow.camera.bottom = -s;
@@ -373,11 +374,22 @@ J.IN = {
   keys: {},
   btn: { atk: 0, heavy: 0, dash: 0, lock: 0 },
   _press: { atk: 0, heavy: 0, dash: 0, jump: 0, ult: 0 },
+  _pressT: { atk: 0, heavy: 0, dash: 0, jump: 0, ult: 0 },
+  held: { atk: 0, heavy: 0, dash: 0, jump: 0, ult: 0 },
+  PRESS_TTL: 260,          // 未消费的按下超过这个时间就作废
   joyActive: false, joyId: -1, lookId: -1, guardHeld: false, parryPress: 0,
   _ox: 0, _oy: 0, _cx: 0, _cy: 0
 };
 
-J.pressed = function (b) { return J.IN._press[b] > 0; };
+J.pressed = function (b) {
+  var IN = J.IN;
+  if (!IN._press[b]) return false;
+  var now = (window.performance && performance.now) ? performance.now() : Date.now();
+  if (now - IN._pressT[b] > IN.PRESS_TTL) { IN._press[b] = 0; return false; }
+  return true;
+};
+/* 消费掉这个脉冲，防止重复触发 */
+J.consume = function (b) { J.IN._press[b] = 0; };
 
 J.initInput = function () {
   var IN = J.IN;
@@ -386,13 +398,20 @@ J.initInput = function () {
   window.addEventListener('keydown', function (e) {
     if (e.repeat) return;
     IN.keys[e.code] = 1;
-    if (e.code === 'KeyJ') IN._press.atk = 1;
-    if (e.code === 'KeyK') { IN._press.heavy = 1; IN.hold_heavy = true; }
-    if (e.code === 'Space') { IN._press.dash = 1; e.preventDefault(); }
-    if (e.code === 'ShiftLeft') { IN._press.jump = 1; }
-    if (e.code === 'KeyE' || e.code === 'KeyR' || e.code === 'KeyQ') IN._press.ult = 1;
+    if (e.code === 'KeyJ' && !IN.held.atk) { IN.held.atk = 1; IN._press.atk = 1; IN._pressT.atk = performance.now(); }
+    if (e.code === 'KeyK' && !IN.held.heavy) { IN.held.heavy = 1; IN._press.heavy = 1; IN._pressT.heavy = performance.now(); IN.hold_heavy = true; }
+    if (e.code === 'Space') { e.preventDefault(); if (!IN.held.dash) { IN.held.dash = 1; IN._press.dash = 1; IN._pressT.dash = performance.now(); } }
+    if (e.code === 'ShiftLeft' && !IN.held.jump) { IN.held.jump = 1; IN._press.jump = 1; IN._pressT.jump = performance.now(); }
+    if ((e.code === 'KeyE' || e.code === 'KeyR' || e.code === 'KeyQ') && !IN.held.ult) { IN.held.ult = 1; IN._press.ult = 1; IN._pressT.ult = performance.now(); }
   });
-  window.addEventListener('keyup', function (e) { IN.keys[e.code] = 0; if (e.code === 'KeyK') IN.hold_heavy = false; });
+  window.addEventListener('keyup', function (e) {
+    IN.keys[e.code] = 0;
+    if (e.code === 'KeyJ') IN.held.atk = 0;
+    if (e.code === 'KeyK') { IN.held.heavy = 0; IN.hold_heavy = false; }
+    if (e.code === 'Space') IN.held.dash = 0;
+    if (e.code === 'ShiftLeft') IN.held.jump = 0;
+    if (e.code === 'KeyE' || e.code === 'KeyR' || e.code === 'KeyQ') IN.held.ult = 0;
+  });
 
   /* 鼠标视角（桌面调试） */
   var cv = J.R.domElement, mdown = false;
@@ -519,15 +538,21 @@ J.initInput = function () {
     if (!el) return;
     el.addEventListener('pointerdown', function (e) {
       e.preventDefault(); e.stopPropagation();
-      /* 防抖：某些 WebView 会把一次触摸拆成多次 pointerdown */
+      /* 边沿触发：只有「从未按下 → 按下」才产生一次脉冲。
+         重复的 pointerdown（同一根手指的抖动/WebView 重发）一律忽略。 */
+      if (IN.held[name]) return;
       var now = (window.performance && performance.now) ? performance.now() : Date.now();
-      if (el._lastDown && now - el._lastDown < 120) return;
-      el._lastDown = now;
+      IN.held[name] = 1;
       IN._press[name] = 1;
+      IN._pressT[name] = now;
       IN['hold_' + name] = true;
       if (navigator.vibrate) { try { navigator.vibrate(8); } catch (err) { } }
     });
-    var up = function (e) { if (e) e.stopPropagation(); IN['hold_' + name] = false; };
+    var up = function (e) {
+      if (e) e.stopPropagation();
+      IN['hold_' + name] = false;
+      IN.held[name] = 0;
+    };
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', up);
     el.addEventListener('pointerleave', up);

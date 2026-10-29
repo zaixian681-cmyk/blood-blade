@@ -41,7 +41,7 @@ J.initPlayer = function () {
     pos: new THREE.Vector3(W.spawn.x, J.Terrain.heightAt(W.spawn.x, W.spawn.z), W.spawn.z),
     yaw: W.spawn.yaw, vy: 0, onGround: true,
     hp: 240, maxHp: 240, stamina: 150, maxStamina: 150,
-    qi: 70, maxQi: J.WINFO.maxQi, chargeT: 0, airJumps: 1, jumpCd: 0,
+    qi: 70, maxQi: J.WINFO.maxQi, chargeT: 0, airJumps: 1, jumpCd: 0, jumpLatch: false,
     moveDmgMul: 1, heavyHeld: false,
     state: 'idle', tim: 0, move: null, moveId: '', hitSet: [],
     camYaw: W.spawn.yaw + Math.PI, camPitch: 0.07, camDist: 4.05,
@@ -183,9 +183,9 @@ J.updatePlayer = function (dt, t) {
 
   if (!P.dead) {
     /* ── 输入读取 ── */
-    var wantAtk = J.pressed('atk');
-    var wantHeavy = J.pressed('heavy');
-    var wantDash = J.pressed('dash');
+    var wantAtk = J.pressed('atk'); if (wantAtk) J.consume('atk');
+    var wantHeavy = J.pressed('heavy'); if (wantHeavy) J.consume('heavy');
+    var wantDash = J.pressed('dash'); if (wantDash) J.consume('dash');
     var wantLock = false;
     var guardHeld = !!IN.keys.KeyL || IN.guardHeld;
 
@@ -203,9 +203,9 @@ J.updatePlayer = function (dt, t) {
     if (P.state === 'hurt' && P.tim >= P.hurtT) { P.state = 'idle'; }
 
     /* ══ 状态机（长刀体系） ══ */
-    var wantJump = J.pressed('jump');
+    var wantJump = J.pressed('jump'); if (wantJump) J.consume('jump');
     var wantSkill = false;
-    var wantUlt = J.pressed('ult');
+    var wantUlt = J.pressed('ult'); if (wantUlt) J.consume('ult');
     var heavyHeld = !!IN.heavyHeld;
 
     if (P.state === 'exec') {
@@ -257,7 +257,7 @@ J.updatePlayer = function (dt, t) {
         J.Combat.start(J.hasBreakTarget() ? 'b1' : 'l1');
       } else if (wantDash && P.stamina >= 12) {
         J.startDash();
-      } else if (wantJump && P.onGround && P.jumpCd <= 0) {
+      } else if (wantJump && P.onGround && P.jumpCd <= 0 && !P.jumpLatch) {
         J.startJump();
       } else {
         if (IN.parryPress) { IN.parryPress = 0; P.parryWindow = 0.22; }
@@ -272,8 +272,9 @@ J.updatePlayer = function (dt, t) {
       if (P.bufferT <= 0) P.buffered = null;
     }
 
-    /* 跳跃冷却衰减 */
+    /* 跳跃冷却与松手解锁 */
     if (P.jumpCd > 0) P.jumpCd -= dt;
+    if (P.jumpLatch && !IN.held.jump) P.jumpLatch = false;
 
     /* 招架窗口衰减 */
     if (P.parryWindow > 0) P.parryWindow -= dt;
@@ -776,6 +777,7 @@ J.startJump = function () {
   P.state = 'air';
   P.tim = 0;
   P.jumpCd = 0.26;              // 冷却：防止按住/重复事件导致连跳
+  P.jumpLatch = true;           // 锁：必须松手才能再次起跳
   P.vy = 7.6;
   P.onGround = false;
   P.airJumps = 1;
@@ -942,6 +944,8 @@ J.updateCamera = function (dt) {
 /* ═══════════ 主循环 ═══════════ */
 J.startLoop = function () {
   var last = performance.now();
+  /* 帧率自适应：连续掉帧就降像素比 */
+  var slowFrames = 0, quality = 2;
   var acc = 0;
   function frame(now) {
     requestAnimationFrame(frame);
@@ -973,6 +977,19 @@ J.startLoop = function () {
       }
     }
     J.R.render(J.S, J.C);
+
+    /* 性能自适应 */
+    if (raw > 0.028) slowFrames++; else if (slowFrames > 0) slowFrames -= 0.5;
+    if (slowFrames > 50 && quality > 0) {
+      quality--;
+      slowFrames = 0;
+      var cap = quality === 0 ? 1.0 : 1.25;
+      J.R.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
+      if (quality === 0 && J.R.shadowMap.enabled) {
+        J.R.shadowMap.enabled = false;
+        J.S.traverse(function (o) { if (o.isMesh) o.material && (o.material.needsUpdate = true); });
+      }
+    }
 
     // 清空按键脉冲
     var pr = J.IN._press;

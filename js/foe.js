@@ -501,6 +501,11 @@
       /* 动画 */
       this.anim(dt, t, spd, distToP);
 
+      /* 距离剔除：超过 58 米不渲染（省 draw call） */
+      var distToCam = J.C ? Math.hypot(this.pos.x - J.C.position.x, this.pos.z - J.C.position.z) : 0;
+      if (distToCam > 58) { if (M.root.visible) M.root.visible = false; return; }
+      if (!M.root.visible) M.root.visible = true;
+
       M.root.position.set(this.pos.x, this.pos.y, this.pos.z);
       M.spin.rotation.y = this.yaw;
       /* 影子贴地：只按离地高度衰减，不能用世界高度 */
