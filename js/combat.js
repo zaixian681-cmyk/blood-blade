@@ -258,10 +258,10 @@ J.Combat = (function () {
 
       /* 敌人定格，转身面向玩家 */
       foe.yaw = Math.atan2(-dx, -dz);
-      foe.enter('break', 3.2);
+      foe.enter('break', 2.0);
 
       /* 慢动作 + 镜头接管 */
-      J.slowMo = 0.42;
+      J.slowMo = 0.58;
       J.FX.shake(0.06, 0.2);
       J.FX.ring(P.pos.x, P.pos.y + 1.0, P.pos.z, 0x9fd0ff, 3.0);
       J.UI.flashText('处 决');
@@ -275,24 +275,24 @@ J.Combat = (function () {
       P.execT += dt;
       var t = P.execT;
 
-      /* 阶段 1：瞬身贴近（0~0.22） */
-      if (t < 0.22) {
-        var k = t / 0.22;
+      /* 阶段 1：瞬身贴近（0~0.11） */
+      if (t < 0.11) {
+        var k = t / 0.11;
         var e = k * k * (3 - 2 * k);
         P.pos.x = J.U.lerp(P.execFrom.x, P.execTo.x, e);
         P.pos.z = J.U.lerp(P.execFrom.z, P.execTo.z, e);
         P.pos.y = J.U.lerp(P.execFrom.y, P.execTo.y, e);
       }
 
-      /* 阶段 2：斩下（0.42 命中） */
-      if (t >= 0.42 && !P.execHit) {
+      /* 阶段 2：斩下（0.23 命中） */
+      if (t >= 0.23 && !P.execHit) {
         P.execHit = true;
         var isBoss = foe.cfg.boss;
         var dmg = isBoss ? Math.round(foe.maxHp * 0.34) : 9999;
         foe.hurt(dmg, P.pos, 3.4, true, false);
         if (isBoss) foe.enter('break', 2.0);
 
-        J.FX.hitstop(0.22);
+        J.FX.hitstop(0.13);
         J.FX.shake(0.34, 0.42);
         J.FX.ring(foe.pos.x, foe.pos.y + 1.15, foe.pos.z, 0xffc880, 5.2);
         J.FX.ring(foe.pos.x, foe.pos.y + 1.15, foe.pos.z, 0xff8a4a, 3.0);
@@ -305,8 +305,8 @@ J.Combat = (function () {
         P.qi = Math.min(J.MAXQI || J.WINFO.maxQi, P.qi + 12);
       }
 
-      /* 阶段 3：收刀（1.5 结束） */
-      if (t > 1.55) {
+      /* 阶段 3：收刀（0.78 结束） */
+      if (t > 0.78) {
         P.state = 'idle';
         P.tim = 0;
         P.execT = 0;

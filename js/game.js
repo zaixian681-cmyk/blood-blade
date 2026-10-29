@@ -614,9 +614,9 @@ J.animatePlayer = function (dt, t) {
     }
   } else if (st === 'exec') {
     var et2 = P.execT || 0;
-    if (et2 < 0.30) {
+    if (et2 < 0.16) {
       /* 举刀过顶蓄势 */
-      var k1 = Math.min(1, et2 / 0.30);
+      var k1 = Math.min(1, et2 / 0.16);
       tgt.arX = -0.45 - 2.35 * k1;
       tgt.arZ = -0.15 - 0.22 * k1;
       tgt.arEl = -0.5 - 0.55 * k1;
@@ -629,9 +629,9 @@ J.animatePlayer = function (dt, t) {
       tgt.kneeL = 0.34 * k1; tgt.kneeR = 0.38 * k1;
       tgt.wpnRotX = 1.1 + 1.3 * k1;
       tgt.hipsY = 0.86 - 0.10 * k1;
-    } else if (et2 < 0.56) {
+    } else if (et2 < 0.29) {
       /* 一刀劈下 */
-      var k2 = Math.min(1, (et2 - 0.30) / 0.26);
+      var k2 = Math.min(1, (et2 - 0.16) / 0.13);
       var ease2 = k2 * k2 * (3 - 2 * k2);
       tgt.arX = -2.80 + 3.75 * ease2;
       tgt.arZ = -0.37 + 0.55 * ease2;
@@ -648,7 +648,7 @@ J.animatePlayer = function (dt, t) {
       tgt.hipsY = 0.86 - 0.10 - 0.06 * ease2;
     } else {
       /* 收刀站定 */
-      var k3 = Math.min(1, (et2 - 0.56) / 0.45);
+      var k3 = Math.min(1, (et2 - 0.29) / 0.34);
       tgt.arX = J.U.lerp(0.95, -0.18, k3);
       tgt.arZ = J.U.lerp(0.18, -0.12, k3);
       tgt.arEl = J.U.lerp(0.25, -0.25, k3);
@@ -911,7 +911,7 @@ J.updateCamera = function (dt) {
   /* ── 处决特写镜头 ── */
   if (P.state === 'exec' && P.execTarget) {
     var f = P.execTarget, et = P.execT;
-    var push = Math.min(1, et / 0.26);
+    var push = Math.min(1, et / 0.13);
     var ang = P.execFace + 1.52;                 // 侧后方 87°
     var dist = 3.0 - push * 0.75;
     var tx = f.pos.x + Math.sin(ang) * dist;
