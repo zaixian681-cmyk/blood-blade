@@ -151,8 +151,8 @@ J.updateSlash = function (dt) {
     }
     if (show) {
       w.updateWorldMatrix(true, false);
-      var tip = new THREE.Vector3(0.42, 1.04, 0).applyMatrix4(w.matrixWorld);
-      var base = new THREE.Vector3(0.18, 0.70, 0).applyMatrix4(w.matrixWorld);
+      var tip = new THREE.Vector3(0.50, 1.28, 0).applyMatrix4(w.matrixWorld);
+      var base = new THREE.Vector3(0.22, 0.86, 0).applyMatrix4(w.matrixWorld);
       /* 外晕：沿刀刃方向两端各外扩，形成更宽更淡的第二层 */
       var dirv = tip.clone().sub(base);
       var dl = dirv.length() || 1;
@@ -452,292 +452,287 @@ J.updatePlayer = function (dt, t) {
 };
 var W_LIM = 140;
 
+/* ═══════════ 缓动曲线 ═══════════ */
+var E = {
+  lin: function (t) { return t; },
+  inQ: function (t) { return t * t; },
+  inQ3: function (t) { return t * t * t; },
+  outQ: function (t) { return 1 - (1 - t) * (1 - t); },
+  outExpo: function (t) { return t >= 1 ? 1 : 1 - Math.pow(2, -11 * t); },
+  inOut: function (t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; },
+  inExpo: function (t) { return t <= 0 ? 0 : Math.pow(t, 3.4); }
+};
+
+/* ═══════════ 基础站姿 ═══════════ */
+var POSE_IDLE = {
+  arX: -0.18, arZ: -0.12, arEl: -0.28,
+  alX: -0.18, alZ: 0.12, alEl: -0.28,
+  torsoX: 0.02, torsoY: 0, torsoZ: 0,
+  headX: 0, headY: 0,
+  legL: 0, legR: 0, kneeL: 0, kneeR: 0,
+  hipsY: 0.86, hipsRotY: 0, squat: 0,
+  wpnRotX: 0.57, wpnRotZ: 0, wpnRotY: 0
+};
+
+/* ═══════════ 招式关键姿态：预备(wind) / 挥出(strike) ═══════════ */
+var POSE = {
+  bigSlash: {
+    wind: { arX: -0.62, arZ: -2.05, arEl: -1.05, alX: -1.25, alZ: 0.85,
+      torsoY: -1.30, torsoX: -0.12, hipsRotY: -0.55, wpnRotX: 1.05,
+      legL: 0.22, legR: -0.26, kneeL: 0.18, kneeR: 0.34, hipsY: 0.80 },
+    strike: { arX: 0.42, arZ: 1.32, arEl: 0.28, alX: 0.55, alZ: 0.30,
+      torsoY: 2.05, torsoX: 0.36, hipsRotY: 0.90, wpnRotX: 0.62,
+      legL: -0.18, legR: 0.22, kneeL: 0.10, kneeR: 0.16, hipsY: 0.86 }
+  },
+  bigSlashR: {
+    wind: { arX: -0.55, arZ: 1.15, arEl: -1.15, alX: -1.05, alZ: 0.55,
+      torsoY: 1.25, torsoX: -0.10, hipsRotY: 0.52, wpnRotX: 0.95,
+      legL: -0.22, legR: 0.24, kneeL: 0.30, kneeR: 0.16, hipsY: 0.80 },
+    strike: { arX: 0.38, arZ: -2.15, arEl: 0.22, alX: 0.35, alZ: 0.45,
+      torsoY: -2.10, torsoX: 0.32, hipsRotY: -0.92, wpnRotX: 0.55,
+      legL: 0.24, legR: -0.20, kneeL: 0.14, kneeR: 0.12, hipsY: 0.86 }
+  },
+  spinWide: {
+    wind: { arX: -0.42, arZ: -1.70, arEl: -0.62, alX: -0.85, alZ: 1.05,
+      torsoY: -0.75, torsoX: 0.05, hipsRotY: -0.42, wpnRotX: 0.90,
+      legL: 0.18, legR: -0.18, kneeL: 0.22, kneeR: 0.20, hipsY: 0.83 },
+    strike: { arX: 0.10, arZ: 1.55, arEl: 0.05, alX: 0.30, alZ: 0.95,
+      torsoY: 4.60, torsoX: 0.20, hipsRotY: 3.60, wpnRotX: 0.80,
+      legL: -0.30, legR: 0.30, kneeL: 0.16, kneeR: 0.16, hipsY: 0.855 }
+  },
+  overhead: {
+    wind: { arX: -2.85, arZ: -0.30, arEl: -1.10, alX: -2.55, alZ: 0.20,
+      torsoX: -0.34, torsoY: 0.10, headX: -0.16, wpnRotX: 1.75,
+      legL: 0.10, legR: -0.10, kneeL: 0.24, kneeR: 0.28, hipsY: 0.80 },
+    strike: { arX: 1.05, arZ: 0.05, arEl: 0.10, alX: 0.75, alZ: 0.12,
+      torsoX: 0.68, torsoY: 0, headX: 0.26, wpnRotX: -0.20,
+      legL: 0.16, legR: -0.14, kneeL: 0.30, kneeR: 0.34, hipsY: 0.78 }
+  },
+  chargeSlash: {
+    wind: { arX: -1.05, arZ: -2.35, arEl: -1.35, alX: -1.95, alZ: 1.05,
+      torsoY: -1.55, torsoX: -0.24, hipsRotY: -0.62, wpnRotX: 1.45,
+      legL: 0.24, legR: -0.28, kneeL: 0.34, kneeR: 0.38, hipsY: 0.74 },
+    strike: { arX: 0.52, arZ: 1.55, arEl: 0.30, alX: 0.70, alZ: 0.35,
+      torsoY: 2.40, torsoX: 0.44, hipsRotY: 1.10, wpnRotX: 0.50,
+      legL: -0.26, legR: 0.30, kneeL: 0.12, kneeR: 0.18, hipsY: 0.84 }
+  },
+  launch: {
+    wind: { arX: 0.85, arZ: -0.35, arEl: -0.42, alX: 0.55, alZ: 0.35,
+      torsoX: 0.42, torsoY: -0.15, wpnRotX: -0.35,
+      legL: 0.20, legR: -0.20, kneeL: 0.55, kneeR: 0.50, hipsY: 0.72 },
+    strike: { arX: -3.10, arZ: -0.30, arEl: 0.10, alX: -1.55, alZ: 0.35,
+      torsoX: -0.62, torsoY: 0.10, wpnRotX: 0.10,
+      legL: 0.05, legR: -0.05, kneeL: 0.16, kneeR: 0.16, hipsY: 0.90 }
+  },
+  airSlash: {
+    wind: { arX: -1.25, arZ: -1.45, arEl: -1.05, alX: -0.95, alZ: 0.65,
+      torsoY: -0.95, torsoX: 0.08, wpnRotX: 1.05,
+      legL: 0.70, legR: -0.35, kneeL: 1.00, kneeR: 0.25, hipsY: 0.86 },
+    strike: { arX: 0.35, arZ: 1.15, arEl: 0.20, alX: 0.20, alZ: 0.55,
+      torsoY: 1.55, torsoX: 0.22, wpnRotX: 0.55,
+      legL: 0.35, legR: -0.30, kneeL: 0.75, kneeR: 0.30, hipsY: 0.86 }
+  },
+  plunge: {
+    wind: { arX: -2.85, arZ: -0.10, arEl: -1.10, alX: -2.35, alZ: 0.18,
+      torsoX: -0.36, torsoY: 0, headX: -0.18, wpnRotX: 1.65,
+      legL: 0.45, legR: -0.55, kneeL: 0.85, kneeR: 0.30, hipsY: 0.86 },
+    strike: { arX: 1.15, arZ: 0.02, arEl: 0.15, alX: 0.90, alZ: 0.10,
+      torsoX: 0.78, torsoY: 0, headX: 0.30, wpnRotX: -0.30,
+      legL: 0.30, legR: -0.20, kneeL: 0.55, kneeR: 0.45, hipsY: 0.80 }
+  },
+  finisherBlade: {
+    wind: { arX: -1.15, arZ: -2.55, arEl: -1.45, alX: -2.15, alZ: 1.15,
+      torsoY: -1.75, torsoX: -0.30, hipsRotY: -0.78, wpnRotX: 1.60,
+      legL: 0.28, legR: -0.32, kneeL: 0.38, kneeR: 0.42, hipsY: 0.70 },
+    strike: { arX: 0.62, arZ: 1.75, arEl: 0.35, alX: 0.85, alZ: 0.40,
+      torsoY: 2.75, torsoX: 0.50, hipsRotY: 1.30, wpnRotX: 0.45,
+      legL: -0.32, legR: 0.36, kneeL: 0.14, kneeR: 0.20, hipsY: 0.82 }
+  }
+};
+
+/* 采样式挥砍：预备 → 发力 → 收势 三段缓动 */
+function sampleSwing(animName, prog, hit0, hit1) {
+  var P0 = POSE_IDLE;
+  var PA = POSE[animName] || POSE.bigSlash;
+  var PW = PA.wind, PS = PA.strike;
+
+  /* 预备：缓慢举刀（缓入） */
+  var w = E.inOut(Math.min(1, prog / Math.max(0.02, hit0)));
+  /* 发力：极快甩出（指数出） */
+  var sStart = hit0;
+  var sEnd = Math.min(1, hit1 + 0.05);
+  var s = E.outExpo(Math.min(1, Math.max(0, (prog - sStart) / Math.max(0.02, sEnd - sStart))));
+  /* 收势：回到站姿（缓入缓出） */
+  var rStart = Math.min(1, hit1 + 0.12);
+  var r = E.inOut(Math.min(1, Math.max(0, (prog - rStart) / Math.max(0.05, 1 - rStart))));
+
+  var out = {};
+  for (var k in PS) {
+    var a = P0[k] !== undefined ? P0[k] : 0;
+    var bv = PW[k] !== undefined ? PW[k] : a;
+    var cv = PS[k];
+    var v = a + (bv - a) * w;
+    v = v + (cv - v) * s;
+    v = v + (a - v) * r;
+    out[k] = v;
+  }
+  return out;
+}
+
 /* ═══════════ 玩家动画 ═══════════ */
 J.animatePlayer = function (dt, t) {
   var P = J.P, H = P.model;
   var A = H.armR, B2 = H.armL, L = H.legR, R = H.legL;
-
   var st = P.state;
   var runSpd = P.animSpeed || 0;
   var moving = runSpd > 0.2;
-  P.walkPhase += dt * (moving ? runSpd * 1.55 : 1.5);
+  P.walkPhase += dt * (moving ? runSpd * 1.75 : 1.35);
+  var sw = Math.sin(P.walkPhase), sw2 = Math.sin(P.walkPhase + Math.PI);
 
-  /* 默认姿态目标值 */
-  var tgt = {
-    arX: -0.15, arZ: -0.10, arEl: -0.25,
-    alX: -0.15, alZ: 0.10, alEl: -0.25,
-    torsoX: 0.02, torsoY: 0, torsoZ: 0,
-    headX: 0, headY: 0,
-    legL: 0, legR: 0, kneeL: 0, kneeR: 0,
-    hipsY: 0.86, hipsRotY: 0, squat: 0,
-    wpnRotX: 0.57, wpnRotZ: 0.15, wpnRotY: 0
-  };
-
-  var swing = Math.sin(P.walkPhase);
-  var swing2 = Math.sin(P.walkPhase + Math.PI);
+  var tgt = {};
+  for (var k in POSE_IDLE) tgt[k] = POSE_IDLE[k];
 
   if (st === 'run') {
     var amp = Math.min(1.0, runSpd / 7.0);
-    tgt.legL = swing * 0.72 * amp;
-    tgt.legR = swing2 * 0.72 * amp;
-    tgt.kneeL = Math.max(0, -swing) * 0.85 * amp;
-    tgt.kneeR = Math.max(0, -swing2) * 0.85 * amp;
-    tgt.arX = -0.15 - swing * 0.55 * amp;
-    tgt.alX = -0.15 - swing2 * 0.55 * amp;
-    tgt.torsoX = 0.10 + amp * 0.12;
-    tgt.torsoZ = swing * 0.05 * amp;
-    tgt.hipsY = 0.86 + Math.abs(Math.sin(P.walkPhase)) * 0.045 * amp;
+    tgt.legL = sw * 0.78 * amp;
+    tgt.legR = sw2 * 0.78 * amp;
+    tgt.kneeL = Math.max(0, -sw) * 0.95 * amp;
+    tgt.kneeR = Math.max(0, -sw2) * 0.95 * amp;
+    tgt.arX = -0.18 - sw * 0.62 * amp;
+    tgt.alX = -0.18 - sw2 * 0.62 * amp;
+    tgt.arEl = -0.34 - amp * 0.25;
+    tgt.alEl = -0.34 - amp * 0.25;
+    tgt.torsoX = 0.06 + amp * 0.16;
+    tgt.torsoZ = sw * 0.06 * amp;          // 跑步时躯干左右摆
+    tgt.torsoY = sw2 * 0.10 * amp;
+    tgt.hipsY = 0.86 + Math.abs(Math.sin(P.walkPhase)) * 0.055 * amp;
+    tgt.hipsRotY = -sw * 0.16 * amp;
+    tgt.headY = sw2 * 0.08 * amp;
+
   } else if (st === 'idle') {
-    var br = Math.sin(t * 1.7);
-    tgt.hipsY = 0.86 + br * 0.008;
-    tgt.torsoX = 0.02 + br * 0.01;
-    tgt.arX = -0.18 + br * 0.02;
-    tgt.alX = -0.18 - br * 0.02;
-    tgt.headY = Math.sin(t * 0.7) * 0.06;
+    /* 呼吸 + 重心微移，避免"木桩" */
+    var br = Math.sin(t * 1.55);
+    var sway = Math.sin(t * 0.62);
+    tgt.hipsY = 0.86 + br * 0.010;
+    tgt.torsoX = 0.02 + br * 0.014;
+    tgt.torsoZ = sway * 0.018;
+    tgt.arX = -0.18 + br * 0.025;
+    tgt.alX = -0.18 - br * 0.025;
+    tgt.arZ = -0.12 + sway * 0.02;
+    tgt.alZ = 0.12 - sway * 0.02;
+    tgt.headY = Math.sin(t * 0.45) * 0.10;
+    tgt.headX = Math.sin(t * 0.33) * 0.03;
+    tgt.kneeL = 0.04 + br * 0.012;
+    tgt.kneeR = 0.04 - br * 0.012;
     if (P.blocking) {
       tgt.arX = -1.15; tgt.arZ = -0.35; tgt.arEl = -1.25;
       tgt.alX = -1.05; tgt.alZ = 0.55; tgt.alEl = -1.15;
       tgt.torsoX = -0.10; tgt.headX = 0.06;
-      tgt.wpnRotX = 0.10; tgt.wpnRotZ = 0.0;
+      tgt.wpnRotX = 0.15;
     }
+
   } else if (st === 'atk') {
     var M = P.move;
-    var pr = M ? Math.min(1, P.tim / P.moveDur) : 0;
-    var ph = M ? Math.min(1, (P.tim / P.moveDur) / Math.max(0.001, M.hit[1])) : 0;
-    /* 蓄势 0~0.58，发力 0.58~1 */
-    var windP = Math.min(1, ph / 0.58);
-    var strikeP = Math.max(0, Math.min(1, (ph - 0.58) / 0.42));
-    var anim = M ? M.anim : 'bigSlash';
+    var prog = M ? Math.min(1, P.tim / P.moveDur) : 0;
+    var hit0 = M ? M.hit[0] : 0.2, hit1 = M ? M.hit[1] : 0.35;
+    var pose = sampleSwing(M ? M.anim : 'bigSlash', prog, hit0, hit1);
+    for (var k2 in pose) tgt[k2] = pose[k2];
 
-    function lerpP(a0, b0) { return a0 + (b0 - a0) * strikeP; }
+  } else if (st === 'charge') {
+    var cq = Math.min(1, (P.chargeT || 0) / 0.85);
+    var sh2 = Math.sin(t * 30) * 0.010 * cq;
+    tgt.arX = -0.6 - 2.15 * cq + sh2;
+    tgt.arZ = -0.25 - 0.40 * cq;
+    tgt.arEl = -0.5 - 0.55 * cq;
+    tgt.alX = -0.45 - 1.85 * cq;
+    tgt.alZ = 0.30 + 0.22 * cq;
+    tgt.torsoX = -0.40 * cq;
+    tgt.headX = -0.18 * cq;
+    tgt.hipsY = 0.86 - 0.16 * cq;
+    tgt.kneeL = 0.46 * cq; tgt.kneeR = 0.50 * cq;
+    tgt.legL = 0.22 * cq; tgt.legR = -0.26 * cq;
+    tgt.wpnRotX = 0.55 + 1.15 * cq;
 
-    if (anim === 'bigSlash') {
-      /* 大刀横斩：自右后向左前 */
-      tgt.arX = -0.45 - 0.55 * windP + 0.75 * strikeP;
-      tgt.arZ = -0.30 - 1.55 * windP + 2.75 * strikeP;
-      tgt.arEl = -0.55 - 0.45 * windP + 0.75 * strikeP;
-      tgt.alX = -1.15 * windP + 0.85 * strikeP;
-      tgt.alZ = 0.55 + 0.30 * windP;
-      tgt.torsoY = -1.05 * windP + 1.95 * strikeP;
-      tgt.torsoX = -0.10 * windP + 0.34 * strikeP;
-      tgt.hipsRotY = -0.45 * windP + 0.80 * strikeP;
-      tgt.wpnRotX = 0.20 + 0.45 * windP - 0.30 * strikeP;
-      tgt.squat = 0.05 * windP;
-      tgt.legL = 0.20 * windP; tgt.legR = -0.24 * windP;
-      tgt.kneeL = 0.15; tgt.kneeR = 0.28 * windP;
-    } else if (anim === 'bigSlashR') {
-      /* 反手回斩：自左前向右后 */
-      tgt.arX = -0.45 - 0.35 * windP + 0.65 * strikeP;
-      tgt.arZ = 0.85 * windP - 2.55 * strikeP;
-      tgt.arEl = -0.45 - 0.55 * windP + 0.70 * strikeP;
-      tgt.alX = -0.55 - 0.75 * windP + 0.65 * strikeP;
-      tgt.alZ = 0.30;
-      tgt.torsoY = 0.95 * windP - 1.95 * strikeP;
-      tgt.torsoX = -0.06 * windP + 0.28 * strikeP;
-      tgt.hipsRotY = 0.42 * windP - 0.78 * strikeP;
-      tgt.wpnRotX = 0.05 - 0.25 * windP;
-      tgt.legL = -0.18 * windP; tgt.legR = 0.22 * windP;
-    } else if (anim === 'spinWide') {
-      /* 回旋斩：躯干抡一整圈 */
-      var spin = strikeP < 0.05 ? 0 : Math.min(1, strikeP / 0.75);
-      tgt.torsoY = -0.55 * windP + spin * 4.2;
-      tgt.hipsRotY = -0.30 * windP + spin * 3.4;
-      tgt.arX = -0.30 - 0.30 * windP;
-      tgt.arZ = -1.30 * (1 - spin) + 1.10 * spin;
-      tgt.arEl = -0.30;
-      tgt.alX = -0.55 * windP;
-      tgt.alZ = 0.85;
-      tgt.torsoX = 0.10 + 0.10 * strikeP;
-      tgt.wpnRotX = 0.30 - 0.10 * strikeP;
-      tgt.squat = 0.06 * windP;
-    } else if (anim === 'overhead') {
-      /* 竖劈：举过头顶再劈下 */
-      tgt.arX = -0.6 - 2.35 * windP + 3.55 * strikeP;
-      tgt.arZ = -0.10 - 0.25 * windP;
-      tgt.arEl = -0.60 - 0.55 * windP + 0.95 * strikeP;
-      tgt.alX = -0.4 - 2.05 * windP + 3.10 * strikeP;
-      tgt.alZ = 0.18;
-      tgt.torsoX = -0.32 * windP + 0.62 * strikeP;
-      tgt.torsoY = 0.08 * windP - 0.10 * strikeP;
-      tgt.headX = -0.12 * windP + 0.20 * strikeP;
-      tgt.wpnRotX = -0.10 + 1.15 * windP - 1.55 * strikeP;
-      tgt.squat = 0.10 * windP - 0.04 * strikeP;
-      tgt.kneeL = 0.22 * windP; tgt.kneeR = 0.26 * windP;
-    } else if (anim === 'chargeSlash') {
-      /* 蓄力斩：长时间蓄势，然后一记全范围横扫 */
-      var cw2 = Math.min(1, ph / 0.62);
-      tgt.arX = -0.5 - 0.7 * cw2 + 0.9 * strikeP;
-      tgt.arZ = -0.4 - 2.0 * cw2 + 3.2 * strikeP;
-      tgt.arEl = -0.5 - 0.9 * cw2 + 1.0 * strikeP;
-      tgt.alX = -1.5 * cw2 + 1.0 * strikeP;
-      tgt.alZ = 0.75 + 0.4 * cw2;
-      tgt.torsoY = -1.35 * cw2 + 2.6 * strikeP;
-      tgt.torsoX = -0.22 * cw2 + 0.45 * strikeP;
-      tgt.hipsRotY = -0.55 * cw2 + 1.05 * strikeP;
-      tgt.wpnRotX = 0.40 + 0.55 * cw2 - 0.35 * strikeP;
-      tgt.squat = 0.16 * cw2 - 0.05 * strikeP;
-      tgt.kneeL = 0.30 * cw2; tgt.kneeR = 0.34 * cw2;
-      tgt.legL = 0.18 * cw2; tgt.legR = -0.20 * cw2;
-    } else if (anim === 'launch') {
-      /* 挑斩：自下而上 */
-      tgt.arX = 0.85 * windP - 3.10 * strikeP;
-      tgt.arZ = -0.35 - 0.35 * windP;
-      tgt.arEl = -0.25 - 0.35 * windP + 0.35 * strikeP;
-      tgt.alX = 0.55 * windP - 1.55 * strikeP;
-      tgt.alZ = 0.35;
-      tgt.torsoX = 0.42 * windP - 0.68 * strikeP;
-      tgt.wpnRotX = -1.50 + 0.35 * windP;
-      tgt.hipsY = 0.86 - 0.14 * windP + 0.14 * strikeP;
-      tgt.kneeL = 0.55 * windP; tgt.kneeR = 0.50 * windP;
-    } else if (anim === 'airSlash') {
-      /* 空中斩 */
-      tgt.arX = -0.35 - 1.05 * windP + 1.55 * strikeP;
-      tgt.arZ = -1.25 * windP + 2.25 * strikeP;
-      tgt.arEl = -0.35 - 0.55 * windP + 0.65 * strikeP;
-      tgt.alX = -0.9 - 0.6 * windP;
-      tgt.alZ = 0.62;
-      tgt.torsoY = -0.85 * windP + 1.55 * strikeP;
-      tgt.torsoX = 0.10 + 0.15 * strikeP;
-      tgt.legL = 0.75; tgt.legR = -0.35; tgt.kneeL = 1.05;
-      tgt.wpnRotX = 0.40;
-      tgt.hipsY = 0.86;
-    } else if (anim === 'plunge') {
-      /* 下劈：空中收刀再砸下 */
-      tgt.arX = -0.6 - 2.3 * windP + 3.6 * strikeP;
-      tgt.arZ = -0.05;
-      tgt.arEl = -0.5 - 0.6 * windP + 1.0 * strikeP;
-      tgt.alX = -0.5 - 1.9 * windP + 2.9 * strikeP;
-      tgt.torsoX = -0.35 * windP + 0.75 * strikeP;
-      tgt.legL = 0.45; tgt.legR = -0.55; tgt.kneeL = 0.85;
-      tgt.wpnRotX = -0.15 + 1.3 * windP - 1.7 * strikeP;
-      tgt.hipsY = 0.86;
-    } else if (anim === 'finisherBlade') {
-      /* 终结：超大幅蓄势 + 一记贯穿 */
-      var fw = Math.min(1, ph / 0.66);
-      tgt.arX = -0.5 - 1.0 * fw + 1.4 * strikeP;
-      tgt.arZ = -0.3 - 2.35 * fw + 3.9 * strikeP;
-      tgt.arEl = -0.45 - 1.0 * fw + 1.15 * strikeP;
-      tgt.alX = -1.7 * fw + 1.3 * strikeP;
-      tgt.alZ = 0.85 + 0.45 * fw;
-      tgt.torsoY = -1.6 * fw + 3.1 * strikeP;
-      tgt.torsoX = -0.28 * fw + 0.52 * strikeP;
-      tgt.hipsRotY = -0.7 * fw + 1.3 * strikeP;
-      tgt.wpnRotX = 0.45 + 0.7 * fw - 0.5 * strikeP;
-      tgt.squat = 0.20 * fw - 0.08 * strikeP;
-      tgt.kneeL = 0.36 * fw; tgt.kneeR = 0.40 * fw;
-      tgt.legL = 0.26 * fw; tgt.legR = -0.30 * fw;
-      tgt.headX = -0.15 * fw;
-    } else {
-      tgt.arX = -0.3 - 1.0 * windP + 1.5 * strikeP;
-      tgt.arZ = -0.9 * windP + 1.5 * strikeP;
-      tgt.torsoY = -0.7 * windP + 1.2 * strikeP;
-    }
+  } else if (st === 'air') {
+    var rising = P.vy > 0;
+    tgt.arX = -0.55; tgt.arZ = -0.30;
+    tgt.alX = -0.50; tgt.alZ = 0.35;
+    tgt.legL = rising ? 0.62 : 0.22;
+    tgt.legR = rising ? -0.48 : -0.12;
+    tgt.kneeL = rising ? 1.05 : 0.48;
+    tgt.kneeR = rising ? 0.58 : 0.26;
+    tgt.torsoX = rising ? -0.14 : 0.16;
+    tgt.wpnRotX = 0.45;
 
-    /* 收招回正 */
-    if (pr > 0.86) {
-      var back2 = (pr - 0.86) / 0.14;
-      tgt.arX = J.U.lerp(tgt.arX, -0.2, back2);
-      tgt.arZ = J.U.lerp(tgt.arZ, -0.12, back2);
-      tgt.torsoY = J.U.lerp(tgt.torsoY, 0, back2);
-      tgt.hipsRotY = J.U.lerp(tgt.hipsRotY, 0, back2);
-    }
+  } else if (st === 'dash') {
+    var dp = P.tim / P.dashDur;
+    var sp2 = Math.sin(dp * Math.PI);
+    tgt.hipsY = 0.86 - sp2 * 0.24;
+    tgt.torsoX = 0.58 * sp2;
+    tgt.torsoZ = 0.22 * sp2;
+    tgt.arX = -0.55; tgt.alX = -0.85;
+    tgt.arEl = -1.05; tgt.alEl = -1.05;
+    tgt.legL = 0.95 * sp2; tgt.legR = -0.55 * sp2;
+    tgt.kneeL = 1.15 * sp2;
+
+  } else if (st === 'hurt') {
+    var hp2 = 1 - P.tim / Math.max(0.01, P.hurtT);
+    tgt.torsoX = -0.38 * hp2;
+    tgt.arX = 0.38 * hp2; tgt.alX = 0.38 * hp2;
+    tgt.headX = -0.22 * hp2;
+    tgt.hipsY = 0.86 - 0.05 * hp2;
+
   } else if (st === 'exec') {
     var et2 = P.execT || 0;
     if (et2 < 0.16) {
-      /* 举刀过顶蓄势 */
-      var k1 = Math.min(1, et2 / 0.16);
-      tgt.arX = -0.45 - 2.35 * k1;
-      tgt.arZ = -0.15 - 0.22 * k1;
-      tgt.arEl = -0.5 - 0.55 * k1;
-      tgt.alX = -0.40 - 1.95 * k1;
-      tgt.alZ = 0.20 + 0.1 * k1;
-      tgt.torsoX = -0.32 * k1;
-      tgt.torsoY = -0.28 * k1;
-      tgt.headX = -0.14 * k1;
-      tgt.squat = 0.14 * k1;
-      tgt.kneeL = 0.34 * k1; tgt.kneeR = 0.38 * k1;
-      tgt.wpnRotX = -0.05 + 1.3 * k1;
-      tgt.hipsY = 0.86 - 0.10 * k1;
+      var k1 = et2 / 0.16;
+      var e1 = E.outQ(k1);
+      tgt.arX = -0.45 - 2.35 * e1;
+      tgt.arZ = -0.15 - 0.22 * e1;
+      tgt.arEl = -0.5 - 0.55 * e1;
+      tgt.alX = -0.40 - 1.95 * e1;
+      tgt.alZ = 0.20 + 0.1 * e1;
+      tgt.torsoX = -0.32 * e1; tgt.torsoY = -0.28 * e1;
+      tgt.headX = -0.14 * e1;
+      tgt.hipsY = 0.86 - 0.10 * e1;
+      tgt.kneeL = 0.34 * e1; tgt.kneeR = 0.38 * e1;
+      tgt.wpnRotX = 0.55 + 1.25 * e1;
     } else if (et2 < 0.29) {
-      /* 一刀劈下 */
-      var k2 = Math.min(1, (et2 - 0.16) / 0.13);
-      var ease2 = k2 * k2 * (3 - 2 * k2);
-      tgt.arX = -2.80 + 3.75 * ease2;
-      tgt.arZ = -0.37 + 0.55 * ease2;
-      tgt.arEl = -1.05 + 1.30 * ease2;
-      tgt.alX = -2.35 + 2.95 * ease2;
+      var k2 = (et2 - 0.16) / 0.13;
+      var e2 = E.outExpo(k2);
+      tgt.arX = -2.80 + 3.90 * e2;
+      tgt.arZ = -0.37 + 0.55 * e2;
+      tgt.arEl = -1.05 + 1.30 * e2;
+      tgt.alX = -2.35 + 3.05 * e2;
       tgt.alZ = 0.30;
-      tgt.torsoX = -0.32 + 0.86 * ease2;
-      tgt.torsoY = -0.28 + 0.62 * ease2;
-      tgt.headX = -0.14 + 0.30 * ease2;
-      tgt.squat = 0.14 + 0.10 * ease2;
-      tgt.kneeL = 0.34 + 0.30 * ease2;
-      tgt.kneeR = 0.38 + 0.26 * ease2;
-      tgt.wpnRotX = 1.25 - 2.10 * ease2;
-      tgt.hipsY = 0.86 - 0.10 - 0.06 * ease2;
+      tgt.torsoX = -0.32 + 0.92 * e2;
+      tgt.torsoY = -0.28 + 0.62 * e2;
+      tgt.headX = -0.14 + 0.32 * e2;
+      tgt.hipsY = 0.76 - 0.06 * e2;
+      tgt.kneeL = 0.34 + 0.34 * e2; tgt.kneeR = 0.38 + 0.30 * e2;
+      tgt.wpnRotX = 1.80 - 1.95 * e2;
     } else {
-      /* 收刀站定 */
       var k3 = Math.min(1, (et2 - 0.29) / 0.34);
-      tgt.arX = J.U.lerp(0.95, -0.18, k3);
-      tgt.arZ = J.U.lerp(0.18, -0.12, k3);
-      tgt.arEl = J.U.lerp(0.25, -0.25, k3);
-      tgt.alX = J.U.lerp(0.60, -0.18, k3);
-      tgt.alZ = 0.12;
-      tgt.torsoX = J.U.lerp(0.54, 0.02, k3);
-      tgt.torsoY = J.U.lerp(0.34, 0.0, k3);
-      tgt.squat = J.U.lerp(0.24, 0.0, k3);
-      tgt.kneeL = J.U.lerp(0.64, 0.0, k3);
-      tgt.kneeR = J.U.lerp(0.64, 0.0, k3);
-      tgt.wpnRotX = J.U.lerp(0.30, 1.72, k3);
-      tgt.hipsY = 0.86 - 0.16 + 0.16 * k3;
+      var e3 = E.inOut(k3);
+      tgt.arX = J.U.lerp(1.10, -0.18, e3);
+      tgt.arZ = J.U.lerp(0.18, -0.12, e3);
+      tgt.arEl = J.U.lerp(0.25, -0.28, e3);
+      tgt.alX = J.U.lerp(0.70, -0.18, e3);
+      tgt.torsoX = J.U.lerp(0.60, 0.02, e3);
+      tgt.torsoY = J.U.lerp(0.34, 0, e3);
+      tgt.hipsY = J.U.lerp(0.70, 0.86, e3);
+      tgt.kneeL = J.U.lerp(0.68, 0.04, e3);
+      tgt.kneeR = J.U.lerp(0.68, 0.04, e3);
+      tgt.wpnRotX = J.U.lerp(-0.15, 0.57, e3);
     }
-  } else if (st === 'charge') {
-    /* 蓄力：双手举刀过顶，身体下沉后仰 */
-    var cq = Math.min(1, (P.chargeT || 0) / 0.85);
-    var shake2 = Math.sin(t * 34) * 0.012 * cq;
-    tgt.arX = -0.7 - 2.1 * cq + shake2;
-    tgt.arZ = -0.25 - 0.35 * cq;
-    tgt.arEl = -0.55 - 0.5 * cq;
-    tgt.alX = -0.5 - 1.75 * cq;
-    tgt.alZ = 0.30 + 0.2 * cq;
-    tgt.torsoX = -0.36 * cq;
-    tgt.headX = -0.18 * cq;
-    tgt.squat = 0.20 * cq;
-    tgt.kneeL = 0.42 * cq; tgt.kneeR = 0.46 * cq;
-    tgt.legL = 0.20 * cq; tgt.legR = -0.24 * cq;
-    tgt.wpnRotX = -0.10 + 1.35 * cq;
-    tgt.hipsY = 0.86 - 0.14 * cq;
-  } else if (st === 'air') {
-    var rising = P.vy > 0;
-    tgt.arX = -0.5; tgt.arZ = -0.3;
-    tgt.alX = -0.5; tgt.alZ = 0.35;
-    tgt.legL = rising ? 0.55 : 0.2;
-    tgt.legR = rising ? -0.45 : -0.1;
-    tgt.kneeL = rising ? 1.0 : 0.45;
-    tgt.kneeR = rising ? 0.55 : 0.25;
-    tgt.torsoX = rising ? -0.12 : 0.14;
-    tgt.wpnRotX = 0.30;
-    } else if (st === 'dash') {
-    var dp = P.tim / P.dashDur;
-    tgt.squat = Math.sin(dp * Math.PI) * 0.22;
-    tgt.torsoX = 0.55 * Math.sin(dp * Math.PI);
-    tgt.hipsY = 0.86 - tgt.squat;
-    tgt.arX = -0.6; tgt.alX = -0.8; tgt.arEl = -1.0; tgt.alEl = -1.0;
-    tgt.legL = 0.9 * Math.sin(dp * Math.PI); tgt.legR = -0.5 * Math.sin(dp * Math.PI);
-    tgt.kneeL = 1.1 * Math.sin(dp * Math.PI);
-    tgt.torsoZ = 0.25 * Math.sin(dp * Math.PI);
-  } else if (st === 'hurt') {
-    var hp2 = 1 - P.tim / P.hurtT;
-    tgt.torsoX = -0.35 * hp2;
-    tgt.arX = 0.35 * hp2; tgt.alX = 0.35 * hp2;
-    tgt.headX = -0.2 * hp2;
+
   } else if (st === 'dead') {
-    tgt.hipsY = 0.4;
+    tgt.hipsY = 0.42;
     tgt.torsoX = 0.5;
   }
 
-  /* 阻尼混合 */
-  var k = 16;
+  /* 应用：攻击/冲刺用更快的阻尼（几乎直接跟随曲线），待机柔和 */
+  var k = (st === 'atk' || st === 'dash' || st === 'exec') ? 34 : 18;
   function D(a, b) { return J.U.damp(a, b, k, dt); }
 
   A.sh.rotation.x = D(A.sh.rotation.x, tgt.arX);
@@ -760,32 +755,31 @@ J.animatePlayer = function (dt, t) {
   R.knee.rotation.x = D(R.knee.rotation.x, tgt.kneeR);
   L.knee.rotation.x = D(L.knee.rotation.x, tgt.kneeL);
 
-  /* 武器握姿 */
   var wh = H.weaponHolder;
   wh.rotation.x = D(wh.rotation.x, tgt.wpnRotX + 0.35);
-  wh.rotation.z = D(wh.rotation.z, tgt.wpnRotZ + 0.20);
-  wh.rotation.y = D(wh.rotation.y, tgt.wpnRotY);
+  wh.rotation.z = D(wh.rotation.z, (tgt.wpnRotZ || 0) + 0.20);
+  wh.rotation.y = D(wh.rotation.y, tgt.wpnRotY || 0);
 
-  /* 裙摆飘动：每片独立摆动 */
+  /* 裙摆 */
   if (H.skirtPanels) {
     var windAmp = Math.min(0.22, runSpd * 0.026) + (st === 'dash' ? 0.26 : 0);
-    for (var sp2 = 0; sp2 < H.skirtPanels.length; sp2++) {
-      var pn = H.skirtPanels[sp2];
+    for (var sp3 = 0; sp3 < H.skirtPanels.length; sp3++) {
+      var pn = H.skirtPanels[sp3];
       var wave = Math.sin(t * 2.4 + pn.ph + pn.a * 1.6);
       pn.m.rotation.x = wave * 0.030 + windAmp * 0.42;
       pn.m.rotation.z = wave * 0.018;
     }
   }
-  /* 长发飘动 */
+  /* 长发 */
   if (H.longHair) {
     for (var lh = 0; lh < H.longHair.length; lh++) {
       var st2 = H.longHair[lh];
-      st2.rotation.x = 0.05 + Math.sin(t * 1.8 + lh * 0.6) * 0.03 + Math.min(0.32, runSpd * 0.045);
-      st2.rotation.z = (lh - 3) * 0.035 + Math.sin(t * 1.3 + lh * 0.9) * 0.02;
+      var u2 = lh / (H.longHair.length - 1);
+      st2.rotation.x = 0.06 + Math.abs(u2 - 0.5) * 0.10 + Math.sin(t * 1.9 + lh * 0.5) * 0.028 + Math.min(0.30, runSpd * 0.042);
+      st2.rotation.z = (u2 - 0.5) * 0.24 + Math.sin(t * 1.3 + lh * 0.8) * 0.018;
     }
   }
-
-  /* 流苏 & 眼纱飘 */
+  /* 流苏与眼纱 */
   for (var j = 0; j < H.tassels.length; j++) {
     H.tassels[j].rotation.x = Math.sin(t * 2.4 + j) * 0.10 + Math.min(0.35, runSpd * 0.05);
     H.tassels[j].rotation.z = Math.sin(t * 1.8 + j * 2) * 0.06;
@@ -794,9 +788,8 @@ J.animatePlayer = function (dt, t) {
     H.veilTails[0].rotation.x = Math.sin(t * 2.1) * 0.12 + Math.min(0.4, runSpd * 0.05);
     H.veilTails[1].rotation.x = Math.sin(t * 2.1 + 1.5) * 0.12 + Math.min(0.4, runSpd * 0.05);
   }
-  /* 披帛 */
-  for (var s = 0; s < H.sashes.length; s++) {
-    H.sashes[s].rotation.x = Math.sin(t * 1.6 + s * 1.2) * 0.10 - Math.min(0.5, runSpd * 0.06);
+  for (var s2 = 0; s2 < H.sashes.length; s2++) {
+    H.sashes[s2].rotation.x = Math.sin(t * 1.6 + s2 * 1.2) * 0.10 - Math.min(0.5, runSpd * 0.06);
   }
 };
 

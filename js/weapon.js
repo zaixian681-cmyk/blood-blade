@@ -5,8 +5,8 @@
    ═══════════════════════════════════════════════ */
 J.Weapon = (function () {
 
-  var BLADE_LEN = 1.06;      // 刃长
-  var HILT_LEN = 0.26;       // 柄长
+  var BLADE_LEN = 1.30;      // 刃长
+  var HILT_LEN = 0.30;       // 柄长
 
   /* ── 噪声 ── */
   function h2(x, y) { var n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); }
