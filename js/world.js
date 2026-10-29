@@ -6,7 +6,7 @@ J.World = (function () {
 
   var W = {
     lanterns: [], fires: [], colliders: 0,
-    spawn: { x: 0, z: 236, yaw: Math.PI },
+    spawn: { x: 0, z: 196, yaw: Math.PI },
     regions: []
   };
 
@@ -17,7 +17,8 @@ J.World = (function () {
     tile: 0x2b3138, tileD: 0x1a1e23,
     red: 0x8a2e26, redD: 0x5a1c16, gold: 0xc09850,
     bamboo: 0x4e6428, bambooL: 0x627c34, leaf: 0x3a5024,
-    rock: 0x77746a, rockD: 0x57544c, moss: 0x4a5a34
+    rock: 0x77746a, rockD: 0x57544c, moss: 0x4a5a34,
+    grass: 0x5a6e3c, grass2: 0x4a5e30
   };
   var B;
   function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -110,7 +111,7 @@ J.World = (function () {
   function house(cx, cz, w, d, h, opt) {
     opt = opt || {};
     var y0 = hAt(cx, cz);
-    B.box(cx, y0 - 0.4, cz, w + 0.8, 1.4, d + 0.8, C.stoneD);
+    B.box(cx, y0 - 1.2, cz, w + 0.8, 3.0, d + 0.8, C.stoneD);
     B.boxB(cx, y0, cz, w, h, d, opt.wall || C.wall);
     for (var sx = -1; sx <= 1; sx += 2)
       for (var sz = -1; sz <= 1; sz += 2)
@@ -181,11 +182,101 @@ J.World = (function () {
   function rock(x, z, s, col) {
     var y0 = hAt(x, z);
     var c = col || C.rock;
-    B.box(x, y0 + s * 0.3, z, s * 1.6, s * 0.9, s * 1.3, c, { ry: Math.random() * 3, rz: rnd(-0.12, 0.12) });
-    B.box(x + s * 0.2, y0 + s * 0.75, z - s * 0.1, s * 0.9, s * 0.55, s * 0.8, c, { ry: Math.random() * 3 });
+    var c2 = col || C.rockD;
+    var ry = Math.random() * 3.14;
+    /* 主块：上窄下宽，像被劈开的山岩 */
+    B.taper(x, y0 - s * 0.15, z, s * 1.45, s * 1.25, s * 1.05, s * 0.9, s * 1.1, c, { ry: ry });
+    /* 侧面碎块 */
+    B.box(x + s * 0.62, y0 + s * 0.28, z + s * 0.3, s * 0.72, s * 0.75, s * 0.65, c2,
+      { ry: ry + 0.7, rz: rnd(-0.22, 0.22), tint: 0.9 + Math.random() * 0.15 });
+    B.box(x - s * 0.5, y0 + s * 0.2, z - s * 0.42, s * 0.6, s * 0.6, s * 0.55, c2,
+      { ry: ry - 0.5, rz: rnd(-0.18, 0.18), tint: 0.85 + Math.random() * 0.2 });
+    /* 顶部斜切块 */
+    B.box(x + s * 0.1, y0 + s * 0.92, z - s * 0.08, s * 0.75, s * 0.4, s * 0.62, c,
+      { ry: ry + 1.1, rz: rnd(-0.3, 0.3), tint: 1.02 });
     /* 青苔 */
-    B.box(x, y0 + s * 0.82, z, s * 0.85, 0.06, s * 0.7, C.moss, { ry: Math.random() * 3 });
-    if (s > 1.2) J.Col.add(x - s * 0.75, y0, z - s * 0.6, x + s * 0.75, y0 + s, z + s * 0.6, 'wall');
+    if (Math.random() > 0.35) {
+      B.box(x, y0 + s * 1.02, z, s * 0.72, 0.05, s * 0.6, C.moss, { ry: ry });
+    }
+    if (s > 1.1) J.Col.add(x - s * 0.72, y0, z - s * 0.62, x + s * 0.72, y0 + s * 1.15, z + s * 0.62, 'wall');
+  }
+
+  /* ══ 地表细节：草丛 / 灌木 / 碎石 ══ */
+  function grassTuft(x, z, s) {
+    var y0 = hAt(x, z);
+    var blades = 3 + Math.floor(Math.random() * 3);
+    for (var i = 0; i < blades; i++) {
+      var bx = x + rnd(-0.22, 0.22) * s;
+      var bz = z + rnd(-0.22, 0.22) * s;
+      var hh = (0.40 + Math.random() * 0.40) * s;
+      var w = (0.045 + Math.random() * 0.035) * s;
+      var col = Math.random() > 0.5 ? 0x6a8046 : 0x55703a;
+      B.box(bx, y0 + hh / 2, bz, w, hh, 0.03, col,
+        { ry: Math.random() * 3.14, rz: rnd(-0.28, 0.28) });
+    }
+  }
+
+  function shrub(x, z, s) {
+    var y0 = hAt(x, z);
+    var n = 3 + Math.floor(Math.random() * 3);
+    for (var i = 0; i < n; i++) {
+      var bx = x + rnd(-0.5, 0.5) * s, bz = z + rnd(-0.5, 0.5) * s;
+      var r = (0.35 + Math.random() * 0.3) * s;
+      B.box(bx, y0 + r * 0.55, bz, r * 1.9, r * 1.1, r * 1.9,
+        Math.random() > 0.5 ? 0x3c5226 : 0x475f2c, { ry: Math.random() * 3 });
+    }
+  }
+
+  function pebble(x, z, s) {
+    var y0 = hAt(x, z);
+    var w = 0.16 * s;
+    B.box(x, y0 + w * 0.35, z, w * 1.5, w * 0.9, w * 1.2, C.rock,
+      { ry: Math.random() * 3.14, rz: rnd(-0.2, 0.2), tint: 0.65 + Math.random() * 0.5 });
+    B.box(x + w * 0.4, y0 + w * 0.85, z - w * 0.2, w * 0.8, w * 0.6, w * 0.7, C.rockD,
+      { ry: Math.random() * 3.14, tint: 0.8 + Math.random() * 0.4 });
+  }
+
+  /* 沿主路两侧与区域周边撒细节 */
+  function scatterGround() {
+    /* 1) 岩石群：成组散布，构成地表骨相（不用小方块草） */
+    var rockClusters = [
+      [-150, 60], [-90, 150], [40, 170], [120, 80], [-40, 40],
+      [70, -30], [-130, -80], [110, -120], [-60, -140], [150, -60],
+      [-170, -40], [30, -170], [-110, 10], [90, 20], [-20, -100]
+    ];
+    for (var c = 0; c < rockClusters.length; c++) {
+      var ccx = rockClusters[c][0], ccz = rockClusters[c][1];
+      var cnt = 3 + Math.floor(Math.random() * 4);
+      for (var i = 0; i < cnt; i++) {
+        var rx = ccx + rnd(-14, 14), rz = ccz + rnd(-14, 14);
+        if (Math.abs(rx - J.Terrain.pathX(rz)) < 8) continue;
+        var rh = hAt(rx, rz);
+        if (rh < -10 || J.Terrain.slopeAt(rx, rz) > 0.9) continue;
+        rock(rx, rz, rnd(0.9, 2.4));
+      }
+    }
+
+    /* 2) 路边碎石：小、密、贴地 */
+    for (var k = 0; k < 900; k++) {
+      var z = rnd(-210, 190);
+      var px = J.Terrain.pathX(z);
+      var x = px + (Math.random() - 0.5) * 2 * rnd(4.5, 30);
+      if (Math.abs(x) > 205) continue;
+      var h = hAt(x, z);
+      if (h < -10) continue;
+      if (J.Terrain.slopeAt(x, z) > 0.88) continue;
+      pebble(x, z, rnd(0.5, 0.95));
+    }
+
+    /* 3) 草丛：只在高草区，密度低、叶片细 */
+    for (var g = 0; g < 420; g++) {
+      var z2 = rnd(-200, 180);
+      var x2 = J.Terrain.pathX(z2) + (Math.random() - 0.5) * 2 * rnd(9, 55);
+      if (Math.abs(x2) > 200) continue;
+      var h2 = hAt(x2, z2);
+      if (h2 < -8 || J.Terrain.slopeAt(x2, z2) > 0.75) continue;
+      grassTuft(x2, z2, rnd(1.1, 1.8));
+    }
   }
 
   /* ═══════════════════════════════════════════════
@@ -195,10 +286,10 @@ J.World = (function () {
     var t = (z - J.Terrain.GORGE_Z0) / (J.Terrain.GORGE_Z1 - J.Terrain.GORGE_Z0);
     var tc = Math.max(0, Math.min(1, t));
     var sag = Math.sin(tc * Math.PI) * 2.1;
-    var base = (13.4 + (12.4 - 13.4) * tc) - sag;
-    /* 两端向岸边地形收拢，消除落差 */
-    if (t < 0) base = 13.4 + (-t) * 0.2;
-    if (t > 1) base = 12.4 - (t - 1) * 0.3;
+    var base = (11.2 + (10.2 - 11.2) * tc) - sag;
+    /* 两端向岸边地形收拢 */
+    if (t < 0) base = 11.2 + (-t) * 0.15;
+    if (t > 1) base = 10.2 - (t - 1) * 0.2;
     return base;
   }
 
@@ -265,7 +356,7 @@ J.World = (function () {
      区域一：青崖山入口
      ═══════════════════════════════════════════════ */
   function buildEntrance() {
-    var z = 250, cx = J.Terrain.pathX(z);
+    var z = 186, cx = J.Terrain.pathX(z);
     var y = hAt(cx, z);
 
     /* 山门：三开间 */
@@ -298,13 +389,7 @@ J.World = (function () {
     J.Col.add(px - 0.2, py, pz - 0.2, px + 0.2, py + 3, pz + 0.2, 'thin');
 
     /* 空地石阶 */
-    /* 路面碎石（不规则铺设，贴合地形） */
-    for (var st = 0; st < 26; st++) {
-      var sz2 = z - 8 - Math.random() * 42;
-      var sx2 = J.Terrain.pathX(sz2) + rnd(-3.4, 3.4);
-      var sy2 = hAt(sx2, sz2);
-      B.box(sx2, sy2 + 0.015, sz2, rnd(0.9, 2.0), 0.10, rnd(0.7, 1.6), C.stone, { ry: rnd(0, 3.14), tint: 0.8 + Math.random() * 0.3 });
-    }
+
 
     /* 两侧石灯 */
     lamp(cx - 7.5, z - 4);
@@ -312,17 +397,17 @@ J.World = (function () {
     lantern(cx - 5.6, y + gateH - 1.2, z + 0.6, 0xc8382a);
     lantern(cx + 5.6, y + gateH - 1.2, z + 0.6, 0xc8382a);
 
-    W.regions.push({ id: 1, name: '青崖山入口', x: cx, z: z, r: 55 });
+    W.regions.push({ id: 1, name: '青崖山入口', x: cx, z: z, r: 42 });
   }
 
   /* ═══════════════════════════════════════════════
      区域二：竹海山道
      ═══════════════════════════════════════════════ */
   function buildBamboo() {
-    var z0 = 40, z1 = 190;
+    var z0 = 40, z1 = 160;
     for (var z = z0; z < z1; z += 5) {
       var cx = J.Terrain.pathX(z);
-      var density = 3 + Math.floor(Math.random() * 3);
+      var density = 5 + Math.floor(Math.random() * 4);
       for (var n = 0; n < density; n++) {
         var side = Math.random() > 0.5 ? 1 : -1;
         var off = 10 + Math.pow(Math.random(), 1.6) * 62;
@@ -333,8 +418,8 @@ J.World = (function () {
       }
     }
     /* 废弃木屋 */
-    house(J.Terrain.pathX(120) + 16, 120, 7, 6.5, 3.2, { front: -1, roofH: 1.8 });
-    house(J.Terrain.pathX(76) - 18, 76, 6.5, 6, 3.0, { front: 1, roofH: 1.7 });
+    house(J.Terrain.pathX(112) + 15, 112, 7, 6.5, 3.2, { front: -1, roofH: 1.8 });
+    house(J.Terrain.pathX(74) - 16, 74, 6.5, 6, 3.0, { front: 1, roofH: 1.7 });
     /* 倒木 */
     for (var i = 0; i < 7; i++) {
       var lx = J.Terrain.pathX(rnd(50, 180)) + rnd(-30, 30);
@@ -344,16 +429,9 @@ J.World = (function () {
       J.Col.add(lx - 2.4, ly, lz - 0.6, lx + 2.4, ly + 0.8, lz + 0.6, 'thin');
     }
     /* 石阶 */
-    /* 竹海路面：碎石与夯土 */
-    for (var k = 0; k < 90; k++) {
-      var sz = 48 + Math.random() * 140;
-      var sx = J.Terrain.pathX(sz) + rnd(-4.2, 4.2);
-      var sy = hAt(sx, sz);
-      var ss2 = rnd(0.5, 1.5);
-      B.box(sx, sy + 0.01, sz, ss2, 0.08, ss2 * 0.8, C.stone, { ry: rnd(0, 3.14), tint: 0.75 + Math.random() * 0.35 });
-    }
+
     /* 隐藏山洞入口（路边凹处） */
-    var caveZ = 148, caveX = J.Terrain.pathX(caveZ) - 26;
+    var caveZ = 138, caveX = J.Terrain.pathX(caveZ) - 22;
     var caveY = hAt(caveX, caveZ);
     B.box(caveX, caveY + 2.4, caveZ, 6.5, 4.8, 5.5, C.rockD);
     B.box(caveX + 1.2, caveY + 2.0, caveZ + 3.0, 3.2, 3.6, 1.2, 0x1a1a1a, { noShade: true });
@@ -361,18 +439,18 @@ J.World = (function () {
     J.Col.add(caveX - 3.4, caveY, caveZ - 2.8, caveX + 3.4, caveY + 5, caveZ + 2.6, 'wall');
     W.cavePos = { x: caveX + 1.2, y: caveY, z: caveZ + 2.6 };
 
-    W.regions.push({ id: 2, name: '竹海山道', x: J.Terrain.pathX(110), z: 110, r: 80 });
+    W.regions.push({ id: 2, name: '竹海山道', x: J.Terrain.pathX(100), z: 100, r: 62 });
   }
 
   /* ═══════════════════════════════════════════════
      区域四：黑风山寨
      ═══════════════════════════════════════════════ */
   function buildVillage() {
-    var cz = -95, cx = J.Terrain.pathX(cz);
+    var cz = -46, cx = J.Terrain.pathX(cz);
     var y = hAt(cx, cz);
 
     /* 木围墙（留门） */
-    var R = 34;
+    var R = 26;
     for (var a = 0; a < 40; a++) {
       var ang = a / 40 * Math.PI * 2;
       var wx = cx + Math.cos(ang) * R;
@@ -455,7 +533,7 @@ J.World = (function () {
       W.cratePos.push({ x: bx, y: by, z: bz });
     });
 
-    W.regions.push({ id: 4, name: '黑风山寨', x: cx, z: cz, r: 46 });
+    W.regions.push({ id: 4, name: '黑风山寨', x: cx, z: cz, r: 38 });
     W.villageCenter = { x: cx, z: cz };
   }
 
@@ -463,7 +541,7 @@ J.World = (function () {
      区域五：废弃古寺
      ═══════════════════════════════════════════════ */
   function buildTemple() {
-    var cz = -185, cx = J.Terrain.pathX(cz);
+    var cz = -116, cx = J.Terrain.pathX(cz);
     var y = hAt(cx, cz);
 
     /* 山门（残） */
@@ -484,7 +562,7 @@ J.World = (function () {
 
     /* 主殿（可进入） */
     var hx = cx, hz = cz + 2, hy = hAt(hx, hz);
-    var HW = 15, HD = 13, HH = 6.2;
+    var HW = 13, HD = 11, HH = 5.6;
     B.box(hx, hy - 0.5, hz, HW + 2, 1.6, HD + 2, C.stoneD);
 
     /* 墙体：留门口 */
@@ -544,20 +622,20 @@ J.World = (function () {
     });
 
     W.templeCenter = { x: hx, z: hz, y: hy };
-    W.regions.push({ id: 5, name: '废弃古寺', x: cx, z: cz, r: 48 });
+    W.regions.push({ id: 5, name: '废弃古寺', x: cx, z: cz, r: 38 });
   }
 
   /* ═══════════════════════════════════════════════
      区域六：断剑谷
      ═══════════════════════════════════════════════ */
   function buildValley() {
-    var cz = -290, cx = J.Terrain.pathX(cz);
+    var cz = -186, cx = J.Terrain.pathX(cz);
     var y = hAt(cx, cz);
 
     /* 环形石台 */
     for (var i = 0; i < 36; i++) {
       var a = i / 36 * Math.PI * 2;
-      var rr = 21;
+      var rr = 17;
       var px = cx + Math.cos(a) * rr, pz = cz + Math.sin(a) * rr;
       var py = hAt(px, pz);
       B.box(px, py + 0.10, pz, 3.8, 0.24, 2.2, C.stoneL, { ry: -a });
@@ -574,7 +652,7 @@ J.World = (function () {
     /* 环绕石柱 */
     for (var k = 0; k < 8; k++) {
       var ka = k / 8 * Math.PI * 2 + 0.2;
-      var kx = cx + Math.cos(ka) * 26, kz = cz + Math.sin(ka) * 26;
+      var kx = cx + Math.cos(ka) * 21, kz = cz + Math.sin(ka) * 21;
       var ky = hAt(kx, kz);
       B.cyl(kx, ky - 1, kz, 0.75, rnd(5, 8.5), 8, C.stoneD, { r2: 0.62 });
       J.Col.add(kx - 0.8, ky, kz - 0.8, kx + 0.8, ky + 8, kz + 0.8, 'wall');
@@ -598,7 +676,7 @@ J.World = (function () {
     J.S.add(wf);
     W.waterfall = wf;
 
-    W.regions.push({ id: 6, name: '断剑谷', x: cx, z: cz, r: 52 });
+    W.regions.push({ id: 6, name: '断剑谷', x: cx, z: cz, r: 40 });
     W.bossArena = { x: cx, z: cz, r: 26, y: y };
   }
 
@@ -627,7 +705,7 @@ J.World = (function () {
     W.clouds = [];
     var ctex = [cloudTex(0.2), cloudTex(0.55), cloudTex(0.9)];
     for (var ci = 0; ci < 24; ci++) {
-      var ang = Math.random() * 6.283, dist = 150 + Math.random() * 420;
+      var ang = Math.random() * 6.283, dist = 120 + Math.random() * 260;
       var yy = 40 + Math.random() * 90;
       var sp = new THREE.Sprite(new THREE.SpriteMaterial({
         map: ctex[ci % 3], transparent: true, opacity: 0.10 + Math.random() * 0.20,
@@ -666,14 +744,17 @@ J.World = (function () {
     buildEntrance();
     buildBamboo();
     buildBridge();
-    W.regions.push({ id: 3, name: '断崖吊桥', x: J.Terrain.bridgeCenterX(0), z: 2, r: 42 });
+    W.regions.push({ id: 3, name: '断崖吊桥', x: J.Terrain.bridgeCenterX(0), z: 4, r: 34 });
     buildVillage();
     buildTemple();
     buildValley();
 
+    /* 地表细节 */
+    scatterGround();
+
     /* 散落植被与岩石 */
-    for (var i = 0; i < 90; i++) {
-      var px = rnd(-260, 260), pz = rnd(-330, 300);
+    for (var i = 0; i < 70; i++) {
+      var px = rnd(-190, 190), pz = rnd(-210, 200);
       var d = Math.abs(px - J.Terrain.pathX(pz));
       if (d < 12) continue;
       var hh = hAt(px, pz);
@@ -684,7 +765,23 @@ J.World = (function () {
     }
 
     /* 合并静态几何 */
-    var mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0.02 });
+    /* 建筑表面噪声：避免大色块 */
+    var bc = document.createElement('canvas'); bc.width = bc.height = 256;
+    var bg = bc.getContext('2d');
+    bg.fillStyle = '#ffffff'; bg.fillRect(0, 0, 256, 256);
+    var bi2 = bg.getImageData(0, 0, 256, 256), bd = bi2.data;
+    for (var q = 0; q < bd.length; q += 4) {
+      var nz2 = (Math.random() - 0.5) * 26;
+      bd[q] += nz2; bd[q + 1] += nz2; bd[q + 2] += nz2;
+    }
+    bg.putImageData(bi2, 0, 0);
+    var btex = new THREE.CanvasTexture(bc);
+    btex.wrapS = btex.wrapT = THREE.RepeatWrapping;
+    btex.repeat.set(0.35, 0.35);
+
+    var mat = new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.92, metalness: 0.02, map: btex
+    });
     var mesh = B.build(mat);
     mesh.name = 'mapMesh';
     J.S.add(mesh);

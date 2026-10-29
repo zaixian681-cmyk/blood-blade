@@ -4,8 +4,8 @@
    ═══════════════════════════════════════════════ */
 J.Terrain = (function () {
 
-  var SIZE = 760;
-  var SEG = 132;                 // 每格约 5.8m
+  var SIZE = 440;
+  var SEG = 110;                 // 每格约 4m
   var HALF = SIZE / 2;
 
   /* ── 噪声 ── */
@@ -27,9 +27,9 @@ J.Terrain = (function () {
 
   /* ── 沿 z 的基础高度剖面 ── */
   var PROF = [
-    [400, 0], [300, 1.5], [200, 3], [120, 6], [64, 9], [34, 12],
-    [26, 12], [18, -22], [-18, -22], [-26, 13], [-60, 20],
-    [-140, 34], [-180, 44], [-230, 58], [-280, 66], [-330, 73], [-400, 76]
+    [260, 0], [200, 0.6], [160, 2], [120, 4], [80, 7], [46, 9.5],
+    [28, 9.8], [26.5, 9.8], [26, -20], [-16, -20], [-16.5, 10.6], [-18, 10.8],
+    [-46, 15], [-90, 20], [-120, 26], [-150, 31], [-180, 38], [-215, 42], [-260, 45]
   ];
   function baseH(z) {
     z = Math.max(-400, Math.min(400, z));
@@ -44,7 +44,7 @@ J.Terrain = (function () {
   }
 
   /* ── 峡谷区域判定（只能走吊桥） ── */
-  var GORGE_Z0 = -26, GORGE_Z1 = 30;
+  var GORGE_Z0 = -16, GORGE_Z1 = 26;
   var BRIDGE_HALF = 4.2;            // 桥宽的一半
   function bridgeCenterX(z) { return pathX(z); }
 
@@ -58,16 +58,16 @@ J.Terrain = (function () {
       var bd = Math.abs(x - bridgeCenterX(z));
       if (bd > BRIDGE_HALF + 0.6) {
         /* 沟底，越靠中间越深 */
-        var deep = -22 + Math.sin(z * 0.2) * 1.4;
+        var deep = -20 + Math.sin(z * 0.2) * 1.2;
         var edgeFade = ss(GORGE_Z1 + 6, GORGE_Z1 - 4, z) * ss(GORGE_Z0 - 6, GORGE_Z0 + 4, z);
         return lerp(base, deep, edgeFade);
       }
       /* 桥面位置：地形沉下去，由桥板承担通行 */
-      return -22;
+      return -20;
     }
 
     /* 主路两侧抬升为山体 */
-    var side = Math.pow(Math.min(1, d / 105), 1.55) * 58;
+    var side = Math.pow(Math.min(1, d / 70), 1.55) * 40;
 
     /* 山门内侧略抬，形成"山口"感 */
     var n = (fbm(x * 0.0082, z * 0.0082, 4) - 0.5) * 2;
@@ -76,16 +76,16 @@ J.Terrain = (function () {
     var h = base + side + n * (1.4 + rough * 9) + n2 * (0.4 + rough * 2.6);
 
     /* 主路压平，保证可走 */
-    var roadW = 11;
+    var roadW = 9;
     if (d < roadW) {
       var f = ss(roadW, roadW * 0.55, d);
       h = lerp(h, base + n * 0.7, f);
     }
 
     /* 断剑谷：山顶平台 */
-    if (z < -250) {
-      var plat = ss(-250, -285, z);
-      h = lerp(h, 73 + n * 1.2, plat * 0.92);
+    if (z < -175) {
+      var plat = ss(-175, -205, z);
+      h = lerp(h, 40 + n * 1.0, plat * 0.92);
     }
     return h;
   }
@@ -95,6 +95,54 @@ J.Terrain = (function () {
     var hx = heightAt(x + e, z) - heightAt(x - e, z);
     var hz = heightAt(x, z + e) - heightAt(x, z - e);
     return Math.min(1, Math.hypot(hx, hz) / (2 * e) / 1.4);
+  }
+
+  /* ── 地表噪声纹理：让地面有颗粒与斑驳，不再是纯色块 ── */
+  function groundTexture() {
+    var S = 512, cv = document.createElement('canvas');
+    cv.width = cv.height = S;
+    var g = cv.getContext('2d');
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, S, S);
+
+    /* 细颗粒 */
+    var img = g.getImageData(0, 0, S, S), d = img.data;
+    for (var i = 0; i < d.length; i += 4) {
+      var n = (Math.random() - 0.5) * 34;
+      d[i] += n; d[i + 1] += n; d[i + 2] += n;
+    }
+    g.putImageData(img, 0, 0);
+
+    /* 大块斑驳（土色/苔色深浅） */
+    for (var k = 0; k < 90; k++) {
+      var cx = Math.random() * S, cy = Math.random() * S;
+      var r = 12 + Math.random() * 62;
+      var grd = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+      var dark = Math.random() > 0.5;
+      grd.addColorStop(0, dark ? 'rgba(90,80,60,0.16)' : 'rgba(255,255,240,0.13)');
+      grd.addColorStop(1, 'rgba(128,128,128,0)');
+      g.fillStyle = grd;
+      g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
+    }
+    /* 细碎裂纹 */
+    g.strokeStyle = 'rgba(80,72,58,0.25)';
+    for (var c = 0; c < 60; c++) {
+      g.lineWidth = 0.6 + Math.random() * 1.2;
+      var sx = Math.random() * S, sy = Math.random() * S;
+      g.beginPath(); g.moveTo(sx, sy);
+      var px = sx, py = sy;
+      for (var seg = 0; seg < 4; seg++) {
+        px += (Math.random() - 0.5) * 40; py += (Math.random() - 0.5) * 40;
+        g.lineTo(px, py);
+      }
+      g.stroke();
+    }
+
+    var t = new THREE.CanvasTexture(cv);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(46, 46);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 2;
+    return t;
   }
 
   /* ── 地形网格 ── */
@@ -164,7 +212,11 @@ J.Terrain = (function () {
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     g.setIndex(new THREE.BufferAttribute(idx, 1));
     g.computeVertexNormals();
-    var mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 }));
+    var gmat = new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.95, metalness: 0,
+      map: groundTexture()
+    });
+    var mesh = new THREE.Mesh(g, gmat);
     mesh.receiveShadow = true;
     mesh.castShadow = true;
     return mesh;

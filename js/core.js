@@ -137,10 +137,10 @@ J.buildSky = function (topCol, midCol, botCol) {
 
 /* ── 光照：斜阳低角度，长影子，最有武侠味 ── */
 J.initLights = function () {
-  var hemi = new THREE.HemisphereLight(0xa8becd, 0x4a4234, 0.92);
+  var hemi = new THREE.HemisphereLight(0xbccdd8, 0x6a5e48, 1.45);
   J.S.add(hemi);
 
-  var sun = new THREE.DirectionalLight(0xffc48a, 2.15);
+  var sun = new THREE.DirectionalLight(0xffd0a0, 2.35);
   sun.position.set(130, 52, -150);
   sun.castShadow = true;
   sun.shadow.mapSize.set(768, 768);
