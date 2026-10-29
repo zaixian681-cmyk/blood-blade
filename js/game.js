@@ -16,6 +16,7 @@ J.boot = function () {
     J.initLights();
     J.Col.reset();
     J.World.build();
+    if (J.Amb) J.Amb.init();
     J.initInput();
     J.initPlayer();
     J.FX.init();
@@ -79,7 +80,12 @@ J.initPlayer = function () {
 
   /* 玩家受击接口 */
   P.takeHit = function (dmg, fromPos, isBoss) {
-    if (P.invuln > 0 || P.dead) return;
+    if (P.dead) return;
+    /* 无敌帧内：如果正在闪避，判定为完美闪避 */
+    if (P.invuln > 0) {
+      if (P.state === 'dash' && P.tim > 0.03 && P.tim < 0.32) J.perfectDodge(fromPos);
+      return;
+    }
     // 招架判定
     if (P.parryWindow > 0 && P.blocking) {
       P.parryWindow = 0;
@@ -99,6 +105,9 @@ J.initPlayer = function () {
         }
       }
       P.stamina = Math.max(0, P.stamina - 6);
+      if (J.Soul) J.Soul.add(13, { heavy: true });
+      J.slowMo = 0.45;
+      setTimeout(function () { J.slowMo = 1; }, 220);
       /* 弹反成功：自动接下反击（长刀·回身斩） */
       if (P.state !== 'air') J.Combat.start('p1', { force: true });
       return;
@@ -144,6 +153,24 @@ J.initPlayer = function () {
   };
 
   return P;
+};
+
+/* ═══════════ 完美闪避 ═══════════ */
+J.perfectDodge = function (fromPos) {
+  var P = J.P;
+  if (P._perfectCd > 0) return;
+  P._perfectCd = 0.5;
+  J.slowMo = 0.38;
+  setTimeout(function () { J.slowMo = 1; }, 300);
+  if (J.Soul) J.Soul.add(15, { heavy: true });
+  J.FX.spark(P.pos.x, P.pos.y + 1.2, P.pos.z, 26, 0xbfe8ff, 1.9);
+  J.FX.ring(P.pos.x, P.pos.y + 0.5, P.pos.z, 0x9fd8ff, 4.2);
+  J.FX.hitstop(0.08);
+  J.FX.shake(0.07, 0.14);
+  J.UI.flashText('虚 影');
+  P.invuln = Math.max(P.invuln, 0.36);
+  P.stamina = Math.min(P.maxStamina, P.stamina + 18);
+  P.qi = Math.min(P.maxQi, P.qi + 6);
 };
 
 J.playerDie = function () {
@@ -310,7 +337,7 @@ J.updatePlayer = function (dt, t) {
 
       /* 攻击中仍可闪避取消后摇（长刀后摇长，必须有这个出口） */
       var m0 = P.move;
-      if (wantDash && m0 && P.tim / P.moveDur > 0.45 && P.stamina >= 12) {
+      if (wantDash && m0 && P.tim / P.moveDur > 0.32 && P.stamina >= 12) {
         J.startDash();
       }
       /* 输入缓冲 */
@@ -340,7 +367,8 @@ J.updatePlayer = function (dt, t) {
       if (wantUlt) {
         /* 一个键，按优先级自动选：处决 > 终结 > 技能 */
         var victim = J.findBreakFoe();
-        if (victim) { J.Combat.execution(victim); }
+        if (J.Combat.canSoul()) { J.Combat.start('soulMove'); }
+        else if (victim) { J.Combat.execution(victim); }
         else if (J.Combat.canFinisher()) { J.Combat.start('fin'); }
         else if (J.Combat.canSkill()) { J.Combat.start('skill'); }
         else if (P.stamina >= 9) { J.Combat.start('l1'); }
@@ -491,7 +519,7 @@ J.updatePlayer = function (dt, t) {
   H.spin.rotation.y = P.yaw;
   P.weapon.update(dt, t, P.state === 'atk' ? 1.5 : 1.0);
 };
-var W_LIM = 140;
+var W_LIM = 200;
 
 /* ═══════════ 缓动曲线 ═══════════ */
 var E = {
@@ -965,6 +993,15 @@ J.pickTarget = function (cur) {
 J.updateCamera = function (dt) {
   var P = J.P, C = J.C, IN = J.IN;
 
+  /* 过场动画接管镜头 */
+  if (J.Cine && J.Cine.active) { IN.lx = 0; IN.ly = 0; return; }
+
+  /* Boss 战：自动锁定，让镜头看住对手 */
+  if (!P.target && J.boss && !J.boss.dead && !J.boss.gone) {
+    var bd = Math.hypot(J.boss.pos.x - P.pos.x, J.boss.pos.z - P.pos.z);
+    if (bd < 26) P.target = J.boss;
+  }
+
   /* ── 处决特写镜头 ── */
   if (P.state === 'exec' && P.execTarget) {
     var f = P.execTarget, et = P.execT;
@@ -1039,7 +1076,7 @@ J.updateCamera = function (dt) {
   C.lookAt(focus.x, focus.y + 0.05, focus.z + 0.0);
 
   // FOV 随速度轻微变化
-  var wantFov = 60 + Math.min(6, (P.animSpeed || 0) * 0.8);
+  var wantFov = 60 + Math.min(6, (P.animSpeed || 0) * 0.8) + (J.FX.fovAdd || 0) + (P.state === 'charge' ? 2 : 0);
   C.fov = J.U.damp(C.fov, wantFov, 4, dt);
   C.updateProjectionMatrix();
 };
@@ -1064,9 +1101,14 @@ J.startLoop = function () {
     try {
       J.updatePlayer(dt, J.clock);
       for (var i = 0; i < J.foes.length; i++) J.foes[i].update(dt, J.clock);
+      if (J.Ally) J.Ally.update(dt, J.clock);
+      if (J.Boss) J.Boss.update(dt, J.clock);
+      if (J.Soul) J.Soul.update(dt);
       J.FX.update(dt, J.clock);
       J.updateSlash(dt);
       J.World.update(dt, J.clock, J.P.pos);
+      if (J.Amb) J.Amb.update(dt, J.clock, J.P.pos);
+      if (J.Cine) J.Cine.update(raw);
       J.updateCamera(raw);
       J.Interact.update(dt, J.P.pos);
       J.NPC.update(dt, J.clock, J.P);

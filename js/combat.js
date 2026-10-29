@@ -15,6 +15,8 @@ J.Combat = (function () {
 
       if (P.qi < (m.qi || 0)) return false;
       if (P.stamina < (m.stamina || 0) && !opt.force) return false;
+      /* 刀魂消耗（太玄·一刀） */
+      if (m.soulCost && (!J.Soul || J.Soul.v < m.soulCost)) return false;
 
       P.state = 'atk';
       P.tim = 0;
@@ -31,6 +33,7 @@ J.Combat = (function () {
 
       P.stamina = Math.max(0, P.stamina - (m.stamina || 0));
       if (m.qi) P.qi = Math.max(0, P.qi - m.qi);
+      if (m.soulCost && J.Soul) J.Soul.spend(m.soulCost);
 
       /* 新一段刀光 */
       if (J.Slash) {
@@ -70,6 +73,18 @@ J.Combat = (function () {
       if (m.type === 'skill') {
         J.FX.ring(P.pos.x, P.pos.y + 0.9, P.pos.z, 0x9fd0ff, 3.6);
         J.FX.shake(0.08, 0.2);
+      }
+      if (id === 'soulMove') {
+        /* 太玄 · 一刀：全身刀魂炸开 */
+        J.slowMo = 0.42;
+        setTimeout(function () { J.slowMo = 1; }, 900);
+        J.Cine && J.Cine.flash(0xffe8f0, 0.5, 0.5);
+        J.FX.shake(0.24, 0.5);
+        J.FX.ring(P.pos.x, P.pos.y + 0.9, P.pos.z, 0xffb8d8, 7.5);
+        J.FX.ring(P.pos.x, P.pos.y + 1.4, P.pos.z, 0xb090ff, 5.0);
+        J.FX.spark(P.pos.x, P.pos.y + 1.2, P.pos.z, 48, 0xffc8e8, 3.0);
+        J.UI.flashText('太 玄 · 一 刀');
+        P.invuln = Math.max(P.invuln, 1.2);
       }
       return true;
     },
@@ -182,6 +197,8 @@ J.Combat = (function () {
       if (dist > reach * 0.75) falloff = 0.86;
 
       var dmg = (m.dmg || 0) * W.dmgMul * falloff * (P.moveDmgMul || 1);
+      dmg *= (J.Soul ? J.Soul.dmgMul() : 1);
+      if (J.Story && J.Story.hasFlag && J.Story.hasFlag('guTeachDaodao') && f.cfg.phases) dmg *= 1.12;
       dmg *= (1 + Math.min(0.55, combo * 0.028));
       if (crit) dmg *= 1.7;
       dmg = Math.round(dmg);
@@ -225,21 +242,42 @@ J.Combat = (function () {
       if (m.type === 'finisher') hs = 0.16;
       J.FX.hitstop(hs);
       J.FX.shake(isHeavy ? 0.22 : 0.09, isHeavy ? 0.26 : 0.14);
+      if (isHeavy) J.FX.fovPunch(m.type === 'finisher' ? 6.5 : 3.2);
 
       J.comboCount = (J.comboCount || 0) + 1;
       J.comboTimer = 2.6;
 
       /* 命中回内力 */
       P.qi = Math.min(J.WINFO.maxQi, P.qi + (isHeavy ? 4 : 2));
+      /* 连续命中积累刀魂 */
+      if (J.Soul) J.Soul.add(m.type === 'finisher' ? 12 : (isHeavy ? 8.5 : 5.2), { heavy: isHeavy });
+
+      /* 刀意 · 断岳（顾长风所授）：重击带出刀气余波 */
+      if (isHeavy && J.Story && J.Story.hasFlag && J.Story.hasFlag('guTeachDaoyi')) {
+        J.FX.ring(f.pos.x, f.pos.y + 0.75, f.pos.z, 0xa8c8ff, 3.4);
+        J.FX.spark(f.pos.x, f.pos.y + 0.6, f.pos.z, 10, 0xcfe0ff, 1.2);
+        for (var q = 0; q < J.foes.length; q++) {
+          var g2 = J.foes[q];
+          if (g2 === f || g2.dead || g2.gone) continue;
+          if (Math.hypot(g2.pos.x - f.pos.x, g2.pos.z - f.pos.z) < 3.4) {
+            g2.hurt(Math.round(dmg * 0.34), f.pos, 0.5, false);
+            J.FX.dmgText(new THREE.Vector3(g2.pos.x, g2.pos.y + 1.7, g2.pos.z),
+              Math.round(dmg * 0.34), '');
+          }
+        }
+      }
     },
 
     /* ══ 处决：破防敌人的专属演出 ══ */
     execution: function (foe) {
       var P = J.P;
       if (!foe || foe.dead || foe.gone || foe.state !== 'break') return false;
-      if (P.qi < 15) return false;
+      if (!J.Soul || J.Soul.v < 22) {
+        if (J.UI) J.UI.toast('刀魂不足 · 需 22', 1.1);
+        return false;
+      }
 
-      P.qi -= 15;
+      J.Soul.spend(22);
       P.state = 'exec';
       P.tim = 0;
       P.execT = 0;
@@ -312,6 +350,7 @@ J.Combat = (function () {
         J.comboCount = (J.comboCount || 0) + 3;
         J.comboTimer = 3.0;
         P.qi = Math.min(J.MAXQI || J.WINFO.maxQi, P.qi + 12);
+        if (J.Soul) J.Soul.add(10, { heavy: true });
       }
 
       /* 阶段 3：收刀（0.78 结束） */
@@ -330,6 +369,7 @@ J.Combat = (function () {
     canFinisher: function () {
       var P = J.P;
       if (P.qi < J.MOVES.fin.qi) return false;
+      if (J.Soul && J.Soul.v < 55) return false;
       if ((J.comboCount || 0) >= 6) return true;
       for (var i = 0; i < J.foes.length; i++) {
         var f = J.foes[i];
@@ -340,6 +380,11 @@ J.Combat = (function () {
 
     canSkill: function () {
       return J.P.qi >= J.MOVES.skill.qi;
+    },
+
+    /* 刀魂满：太玄 · 一刀 */
+    canSoul: function () {
+      return !!(J.Soul && J.Soul.isFull() && J.MOVES.soulMove);
     }
   };
 

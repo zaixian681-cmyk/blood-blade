@@ -234,6 +234,11 @@
 
     hurt: function (dmg, fromPos, power, isHeavy, launch) {
       if (this.dead) return false;
+      /* 阶段切换 / 登场演出期间不可伤 */
+      if (this.bossInvuln) {
+        J.FX.spark(this.pos.x, this.pos.y + 1.3, this.pos.z, 6, 0xffe0c0, 0.8);
+        return 'block';
+      }
       // 盾卫正面格挡
       if (this.cfg.shield && this.state !== 'stagger') {
         var toP = Math.atan2(J.P.pos.x - this.pos.x, J.P.pos.z - this.pos.z);
@@ -342,14 +347,15 @@
 
     /* 攻击判定：对玩家 */
     checkHit: function () {
-      var dx = J.P.pos.x - this.pos.x, dz = J.P.pos.z - this.pos.z;
+      var T = this.tgt || J.P;
+      var dx = T.pos.x - this.pos.x, dz = T.pos.z - this.pos.z;
       var d = Math.hypot(dx, dz);
       var reach = this.cfg.reach;
       if (d > reach) return false;
       var toP = Math.atan2(dx, dz);
       var diff = J.U.ang(this.yaw, toP);
       if (Math.abs(diff) > 1.0) return false;
-      J.P.takeHit(this.cfg.dmg, this.pos, this.cfg.boss);
+      T.takeHit(this.cfg.dmg, this.pos, this.cfg.boss);
       return true;
     },
 
@@ -389,8 +395,17 @@
       }
       this._wasFlash = this.flashT > 0;
 
+      /* 目标选择：玩家或同伴，打更近的那个 */
+      var T = P;
+      if (J.Ally && J.Ally.active && !J.Ally.down) {
+        var dpP = Math.hypot(P.pos.x - this.pos.x, P.pos.z - this.pos.z);
+        var dpA = Math.hypot(J.Ally.pos.x - this.pos.x, J.Ally.pos.z - this.pos.z);
+        if (dpA < dpP * 1.25) T = J.Ally;
+      }
+      this.tgt = T;
+
       /* 物理 */
-      var distToP = Math.hypot(P.pos.x - this.pos.x, P.pos.z - this.pos.z);
+      var distToP = Math.hypot(T.pos.x - this.pos.x, T.pos.z - this.pos.z);
 
       // 击退惯性
       this.pos.x += this.knock.x * dt;
@@ -413,6 +428,12 @@
       var spd = 0;
       var faceTo = null;
 
+      var bossHandled = false;
+      if (this.cfg.phases && J.Boss) {
+        var st8 = J.Boss.step(this, dt, distToP, t);
+        if (st8) { spd = st8.spd; faceTo = st8.faceTo; bossHandled = true; }
+      }
+      if (!bossHandled) {
       switch (this.state) {
         case 'idle':
           this.wanderT -= dt;
@@ -427,26 +448,27 @@
           break;
 
         case 'alert':
-          faceTo = Math.atan2(P.pos.x - this.pos.x, P.pos.z - this.pos.z);
+          faceTo = Math.atan2(T.pos.x - this.pos.x, T.pos.z - this.pos.z);
           if (this.tim > 0.35) this.enter('chase');
           break;
 
         case 'chase':
-          faceTo = Math.atan2(P.pos.x - this.pos.x, P.pos.z - this.pos.z);
+          faceTo = Math.atan2(T.pos.x - this.pos.x, T.pos.z - this.pos.z);
           if (distToP < (this.cfg.ranged ? 7.5 : this.cfg.range)) {
             if (this.cd <= 0) { this.enter('wind', this.cfg.wind); this.swingSide = Math.random() > 0.5 ? 1 : -1; }
             else { spd = 0.6; if (this.cfg.ranged) spd = 0; }
           } else {
             spd = this.cfg.speed;
           }
-          if (this.cfg.ranged && distToP < 3.2) {
+          if (this.tgt !== P) { /* 打同伴时不后撤 */ }
+          if (this.tgt === P && this.cfg.ranged && distToP < 3.2) {
             spd = -this.cfg.speed * 0.85;   // 射手拉开距离
-            faceTo = Math.atan2(P.pos.x - this.pos.x, P.pos.z - this.pos.z);
+            faceTo = Math.atan2(T.pos.x - this.pos.x, T.pos.z - this.pos.z);
           }
           break;
 
         case 'wind':
-          faceTo = Math.atan2(P.pos.x - this.pos.x, P.pos.z - this.pos.z);
+          faceTo = Math.atan2(T.pos.x - this.pos.x, T.pos.z - this.pos.z);
           if (this.tim >= this.dur) { this.enter('strike', this.cfg.strike); }
           break;
 
@@ -455,7 +477,7 @@
             // 近战：判定帧
             if (this.checkHit()) {
               this.hitThisSwing = true;
-              J.FX.spark(P.pos.x, 1.3, P.pos.z, 12, 0xff9a6a, 1.2);
+              J.FX.spark(T.pos.x, 1.3, T.pos.z, 12, 0xff9a6a, 1.2);
             }
           }
           if (this.tim >= this.dur) { this.enter('recover', this.cfg.rec); this.cd = this.cfg.cd * (0.8 + Math.random() * 0.5); }
@@ -473,6 +495,7 @@
         case 'hurt':
           if (this.tim >= this.dur) { this.enter('chase'); }
           break;
+      }
       }
 
       this.cd -= dt;
@@ -528,6 +551,7 @@
     },
 
     anim: function (dt, t, spd, distToP) {
+      if (this.cfg.phases && J.Boss && J.Boss.anim(this, dt, t, Math.abs(spd) > 0.1)) return;
       var M = this.M;
       var moving = Math.abs(spd) > 0.1;
       this.walkPhase += dt * (moving ? Math.abs(spd) * 2.6 + 3.2 : 1.6);
@@ -663,9 +687,10 @@
     add('guard', -18, -168, 0.5);
     add('guard', 18, -168, -0.5);
     add('thrower', 0, -158, 1.5);
-    var boss = add('boss', 0, -172, Math.PI);
-    boss.home.set(0, -172);
-    J.boss = boss;
+    /* 总坛教头：第五章的关底，不是终局 Boss */
+    var elite = add('boss', rx(-100) - 5, -106, Math.PI * 0.6);
+    elite.home.set(rx(-100) - 5, -106);
+    J.elite = elite;
   };
 
 })();

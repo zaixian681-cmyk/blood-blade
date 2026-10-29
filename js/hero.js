@@ -103,18 +103,18 @@ J.Hero = (function () {
 
   function initMats() {
     var broc = brocadeTex();
-    M.robe = rim(new THREE.MeshStandardMaterial({ map: broc, color: 0x1a1817, roughness: 0.58, metalness: 0.34, emissive: 0x0d0a06, emissiveIntensity: 0.6 }), 0xcfe0f5, 1.15);
-    M.robe2 = rim(new THREE.MeshStandardMaterial({ color: 0x141212, roughness: 0.7, metalness: 0.2 }), 0xcfe0f5, 1.05);
-    M.gold = rim(new THREE.MeshStandardMaterial({ color: 0xe8c884, metalness: 1.0, roughness: 0.26, emissive: 0x6a4d1e, emissiveIntensity: 0.7 }), 0xffe6b0, 0.7);
-    M.skin = rim(new THREE.MeshStandardMaterial({ color: 0xf0d8c8, roughness: 0.62, metalness: 0.0 }), 0xffd8c0, 0.55);
-    M.hair = rim(new THREE.MeshStandardMaterial({ color: 0xe6e2f4, roughness: 0.38, metalness: 0.14, emissive: 0x4a4468, emissiveIntensity: 0.45 }), 0xe8f0ff, 0.95);
-    M.hairD = rim(new THREE.MeshStandardMaterial({ color: 0xd2ccea, roughness: 0.46, metalness: 0.1, emissive: 0x3a3458, emissiveIntensity: 0.4 }), 0xe0e8ff, 0.85);
-    M.veil = new THREE.MeshStandardMaterial({ color: 0xf0e2b4, metalness: 0.75, roughness: 0.3, emissive: 0x6a5220, emissiveIntensity: 0.7, side: THREE.DoubleSide });
+    M.robe = rim(new THREE.MeshStandardMaterial({ map: broc, color: 0x1a1817, roughness: 0.58, metalness: 0.34, emissive: 0x0d0a06, emissiveIntensity: 0.45 }), 0xcfe0f5, 0.55);
+    M.robe2 = rim(new THREE.MeshStandardMaterial({ color: 0x141212, roughness: 0.7, metalness: 0.2 }), 0xcfe0f5, 0.5);
+    M.gold = rim(new THREE.MeshStandardMaterial({ color: 0xd4b070, metalness: 0.92, roughness: 0.3, emissive: 0x5a4018, emissiveIntensity: 0.3 }), 0xffe6b0, 0.35);
+    M.skin = rim(new THREE.MeshStandardMaterial({ color: 0xe8cdb8, roughness: 0.62, metalness: 0.0 }), 0xffd8c0, 0.28);
+    M.hair = rim(new THREE.MeshStandardMaterial({ color: 0xb8b2cc, roughness: 0.42, metalness: 0.12, emissive: 0x24213a, emissiveIntensity: 0.22 }), 0xd6ddf0, 0.45);
+    M.hairD = rim(new THREE.MeshStandardMaterial({ color: 0x8f89a8, roughness: 0.5, metalness: 0.1, emissive: 0x1c1a2c, emissiveIntensity: 0.2 }), 0xc8d2e8, 0.4);
+    M.veil = new THREE.MeshStandardMaterial({ color: 0xd8c894, metalness: 0.6, roughness: 0.34, emissive: 0x4a3818, emissiveIntensity: 0.35, side: THREE.DoubleSide });
     M.face = new THREE.MeshStandardMaterial({ map: faceTex(), roughness: 0.72, transparent: true, depthWrite: false });
-    M.silk = rim(new THREE.MeshStandardMaterial({ color: 0xd4d8e6, roughness: 0.54, metalness: 0.06, transparent: true, opacity: 0.9, side: THREE.DoubleSide, emissive: 0x2a2f40, emissiveIntensity: 0.3 }), 0xc8daf5, 0.85);
-    M.silkIn = rim(new THREE.MeshStandardMaterial({ color: 0x6e6a8c, roughness: 0.58, transparent: true, opacity: 0.97, side: THREE.DoubleSide, emissive: 0x201c32, emissiveIntensity: 0.3 }), 0x9a90c0, 0.6);
-    M.gem = new THREE.MeshStandardMaterial({ color: 0x8f7cff, emissive: 0x6a52ff, emissiveIntensity: 1.8, roughness: 0.2 });
-    M.tail = rim(new THREE.MeshStandardMaterial({ color: 0xf2eefc, roughness: 0.72, metalness: 0.02, emissive: 0x45405e, emissiveIntensity: 0.38, transparent: true, opacity: 0.97 }), 0xdfe8ff, 0.8);
+    M.silk = rim(new THREE.MeshStandardMaterial({ color: 0xa8acbe, roughness: 0.54, metalness: 0.06, transparent: true, opacity: 0.82, side: THREE.DoubleSide, emissive: 0x181c28, emissiveIntensity: 0.18 }), 0xb8c8e0, 0.4);
+    M.silkIn = rim(new THREE.MeshStandardMaterial({ color: 0x54506b, roughness: 0.58, transparent: true, opacity: 0.94, side: THREE.DoubleSide, emissive: 0x161424, emissiveIntensity: 0.18 }), 0x8a80b0, 0.3);
+    M.gem = new THREE.MeshStandardMaterial({ color: 0x7d6ae8, emissive: 0x5442c8, emissiveIntensity: 1.15, roughness: 0.22 });
+    M.tail = rim(new THREE.MeshStandardMaterial({ color: 0xc8c4da, roughness: 0.72, metalness: 0.02, emissive: 0x252236, emissiveIntensity: 0.18, transparent: true, opacity: 0.93 }), 0xc8d4e8, 0.35);
   }
 
   function box(w, h, d, mat, x, y, z) {

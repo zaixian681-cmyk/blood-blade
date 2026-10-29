@@ -987,7 +987,7 @@ J.World = (function () {
         id: 'rescueShen', x: W.cagePos.x, y: W.cagePos.y, z: W.cagePos.z,
         r: 4.0, label: '解开绳索', tag: 'rescue', once: true,
         onUse: function () {
-          J.UI.toast('绳索落地，沈昭宁站起身来', 2.6);
+          J.UI.toast('绳索落地，山与晨站起身来', 2.6);
           J.FX.ring(W.cagePos.x, W.cagePos.y + 1.0, W.cagePos.z, 0xffd070, 3.2);
           if (J.Story) {
             J.Story.onInteract('rescueShen');

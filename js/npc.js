@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════
    npc.js — 剧情 NPC
-   沈昭宁 / 空寂和尚 / 渡口乡民 / 萧无极
+   山与晨 / 空寂和尚 / 渡口乡民 / 萧无极
    ═══════════════════════════════════════════════ */
 J.NPC = (function () {
 
@@ -135,9 +135,9 @@ J.NPC = (function () {
   N.init = function () {
     N.list = [];
 
-    /* 沈昭宁：会在剧情中移动，这里放在崖顶 */
+    /* 山与晨：会在剧情中移动，这里放在崖顶 */
     spawn('shen', 0 + J.Terrain.riverX(178), 178, {
-      name: '沈昭宁', female: true,
+      name: '山与晨', female: true,
       cloth: 0xe6e0f0, trim: 0xb8a8d8, hair: 0xe8e4f4,
       yaw: Math.PI * 1.05,
       dialog: 'shen_meet'
@@ -177,6 +177,7 @@ J.NPC = (function () {
     var best = null, bd = 1e9;
     for (var i = 0; i < N.list.length; i++) {
       var npc = N.list[i];
+      if (npc.hidden) continue;
       /* 呼吸 + 轻微转头看向玩家 */
       npc.tag.position.y = 2.05 + Math.sin(t * 1.4 + npc.ph) * 0.04;
       var toP = Math.atan2(P.pos.x - npc.pos.x, P.pos.z - npc.pos.z);
@@ -185,6 +186,14 @@ J.NPC = (function () {
         npc.model.spin.rotation.y += J.U.ang(npc.model.spin.rotation.y, toP) * Math.min(1, dt * 3);
       }
       if (d < npc.r && d < bd) { bd = d; best = npc; }
+    }
+    /* 山与晨参战后：她本人就是对话对象 */
+    if (J.Ally && J.Ally.active && !J.Ally.down) {
+      var dA = Math.hypot(P.pos.x - J.Ally.pos.x, P.pos.z - J.Ally.pos.z);
+      if (dA < 3.2 && dA < bd) {
+        bd = dA;
+        best = { key: 'shen', name: '山与晨', pos: J.Ally.pos, ally: true };
+      }
     }
     N.near = best;
 
@@ -225,25 +234,48 @@ J.NPC = (function () {
       }
     }
 
-    /* 顾长风：首次相遇不占任务 */
-    if (npc.key === 'gu' && J.Story && !J.Story.hasFlag('metGu')) {
-      J.Story.talk('gu', 'gu_first');
-      return true;
-    }
-    if (npc.key === 'gu' && J.Story && J.Story.hasFlag('metGu')) {
-      var s2 = J.Story.bladeStage;
-      var guLines = s2 >= 3
-        ? ['顾长风：你把刀用明白了。', '顾长风：你父亲要是看见，会笑。']
-        : (s2 >= 2
-          ? ['顾长风：刀气出来了。', '顾长风：但还差一口气 —— 那口气，得你自己找。']
-          : ['顾长风：还没到时候。', '顾长风：先去把该救的人救回来。']);
-      J.UI.showDialog('顾长风', guLines, null);
+    /* ══ 顾长风：三段后续 ══ */
+    if (npc.key === 'gu' && J.Story) {
+      var St = J.Story;
+
+      /* 首次相遇 */
+      if (!St.hasFlag('metGu')) {
+        St.talk('gu', 'gu_first');
+        return true;
+      }
+
+      /* 支线 3：战后回崖顶 */
+      if (St.ended && !St.hasFlag('epilogueSeen')) {
+        J.Cine.mentor(npc, [{ t: 0.2, who: '顾长风', text: '回来了。', dur: 1.4 }],
+          function () { St.talk('gu', 'gu_epilogue'); });
+        return true;
+      }
+
+      /* 支线 2：天绝峰前授刀道 */
+      if (!St.hasFlag('guTeachDaodao') && St.quest.c5_3 === 'done' && St.hasFlag('guTeachDaoyi')) {
+        J.Cine.mentor(npc, [{ t: 0.2, who: '顾长风', text: '我等这一天，等了二十年。', dur: 2.0 }],
+          function () { St.talk('gu', 'gu_teach2'); });
+        return true;
+      }
+
+      /* 支线 1：授刀意 */
+      if (!St.hasFlag('guTeachDaoyi') && (St.bladeStage >= 2 || St.quest.c2_2 === 'done')) {
+        J.Cine.mentor(npc, [{ t: 0.2, who: '顾长风', text: '坐。', dur: 1.4 }],
+          function () { St.talk('gu', 'gu_teach'); });
+        return true;
+      }
+
+      /* 都教完了：闲聊 */
+      var lines = St.hasFlag('guTeachDaodao')
+        ? ['顾长风：刀收得回去，人就还在。', '顾长风：剩下的路，你自己走。']
+        : ['顾长风：先去把该救的人救回来。', '顾长风：刀的事，不急。'];
+      J.UI.showDialog('顾长风', lines, null);
       return true;
     }
 
     /* 无业务往来：说一句闲话 */
     var idle = {
-      shen: '沈昭宁：当心脚下。',
+      shen: (J.Ally && J.Ally.active) ? '山与晨：刀别握太死。' : '山与晨：当心脚下。',
       monk: '空寂和尚：阿弥陀佛。',
       villager: '乡民：这年景，能活着就好。',
       xiao: '萧无极：你还不配与我一战。',
@@ -251,6 +283,22 @@ J.NPC = (function () {
     };
     J.UI.toast(idle[npc.key] || (npc.name + '：……'), 2.0);
     return true;
+  };
+
+  N.hide = function (key) {
+    var npc = N.get(key);
+    if (!npc) return;
+    npc.hidden = true;
+    npc.model.root.visible = false;
+    npc.tag.visible = false;
+  };
+
+  N.show = function (key) {
+    var npc = N.get(key);
+    if (!npc) return;
+    npc.hidden = false;
+    npc.model.root.visible = true;
+    npc.tag.visible = true;
   };
 
   N.get = function (key) {

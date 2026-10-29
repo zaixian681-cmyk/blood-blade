@@ -156,6 +156,11 @@ J.FX = {
   hitstop: function (sec) {
     this.hitstopT = Math.max(this.hitstopT, sec);
   },
+  /* 镜头 FOV 冲击：重刀命中时猛地一收 */
+  fovPunch: function (amt) {
+    this.fovAdd = Math.min(9, (this.fovAdd || 0) + amt);
+  },
+
   shake: function (amt, dur) {
     this.shakeAmt = Math.max(this.shakeAmt, amt);
     this.shakeT = Math.max(this.shakeT, dur || 0.18);
@@ -230,6 +235,9 @@ J.FX = {
       R.m.material.opacity = Math.max(0, (1 - p) * 0.85);
       if (R.life <= 0) R.m.visible = false;
     }
+
+    /* FOV 冲击回落 */
+    if (F.fovAdd) F.fovAdd = J.U.damp(F.fovAdd, 0, 9, dt);
 
     /* 震屏 */
     if (F.shakeT > 0) {

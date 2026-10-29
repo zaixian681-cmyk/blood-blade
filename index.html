@@ -73,6 +73,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 .btn.ult{background:radial-gradient(circle at 38% 32%,rgba(96,80,140,.55),rgba(30,26,44,.72));
   box-shadow:inset 0 0 0 1.2px rgba(160,150,255,.42),0 3px 12px rgba(0,0,0,.42)}
 .btn.ult.ready{box-shadow:inset 0 0 0 2px rgba(190,170,255,.95),0 0 26px rgba(150,130,255,.8);color:#e6ddff}
+.btn.ult.soul{background:radial-gradient(circle at 38% 32%,rgba(190,110,170,.78),rgba(52,20,44,.82));
+  box-shadow:inset 0 0 0 2px rgba(255,180,225,.95),0 0 32px rgba(220,120,255,.9);color:#ffe8f6}
 .btn.ult.exec{background:radial-gradient(circle at 38% 32%,rgba(150,90,50,.75),rgba(52,26,16,.78));
   box-shadow:inset 0 0 0 2px rgba(255,190,110,.95),0 0 28px rgba(255,150,60,.85);color:#ffe8c0}
 .btn.off{opacity:.3}
@@ -142,7 +144,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 @keyframes regIn{0%{opacity:0;letter-spacing:26px}18%{opacity:1;letter-spacing:16px}
   72%{opacity:1;letter-spacing:16px}100%{opacity:0;letter-spacing:12px}}
 
-#objList{position:absolute;left:16px;top:96px;width:186px;font-size:12px;
+#objList{position:absolute;left:16px;top:118px;width:186px;font-size:12px;
   letter-spacing:1px;color:#d8ccb0;opacity:.9;line-height:1.7;
   text-shadow:0 1px 3px rgba(0,0,0,.9)}
 #objList .oi{opacity:.55;transition:opacity .3s}
@@ -155,6 +157,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
   display:none;box-shadow:inset 0 0 0 2px rgba(255,220,150,.85),0 0 22px rgba(255,190,90,.6)}
 #bUse.on{display:flex}
 
+/* 支线 */
+#sideQuest{position:absolute;right:14px;top:134px;width:158px;text-align:right;
+  font-size:11px;letter-spacing:1px;color:#a8c090;line-height:1.6;opacity:0;
+  transition:opacity .3s;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+#sideQuest.on{opacity:.92}
+#sideQuest::before{content:'支线 · ';color:#7f9a6a}
+
 /* 当前目标指引 */
 #questHint{position:absolute;left:50%;top:52px;transform:translateX(-50%);
   font-size:13px;letter-spacing:2px;color:#ffd9a0;white-space:nowrap;
@@ -163,7 +172,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 #questHint .dist{color:#c9a45a;margin-left:10px}
 
 /* 剧情对话 */
-#chapterName{position:absolute;left:16px;top:74px;font-size:11px;letter-spacing:3px;
+#chapterName{position:absolute;left:16px;top:96px;font-size:11px;letter-spacing:3px;
   color:#c9a45a;opacity:.85;text-shadow:0 1px 3px #000}
 #dlg{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);
   width:min(86%,760px);padding:14px 20px 18px;border-radius:12px;
@@ -195,11 +204,94 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 /* 调试错误条 */
 #err{position:fixed;left:0;right:0;top:0;z-index:99;background:rgba(140,20,20,.94);color:#fff;
   font:11px/1.5 ui-monospace,monospace;padding:6px 10px;display:none;white-space:pre-wrap;max-height:40%;overflow:auto}
+
+/* ── 画面调色：暗角 + 暖边 ── */
+#grade{position:absolute;inset:0;pointer-events:none;z-index:5;
+  background:
+    radial-gradient(ellipse at 50% 48%,rgba(0,0,0,0) 42%,rgba(0,0,0,.16) 72%,rgba(0,0,0,.44) 100%),
+    linear-gradient(180deg,rgba(24,18,10,.14),rgba(0,0,0,0) 22%,rgba(0,0,0,0) 74%,rgba(10,8,6,.28));
+  mix-blend-mode:multiply}
+
+/* ── 刀魂 ── */
+#soulWrap{position:absolute;left:18px;top:60px;width:170px;height:11px;border-radius:6px;
+  background:rgba(0,0,0,.55);box-shadow:inset 0 0 0 1px rgba(150,140,220,.32);overflow:hidden}
+#soulFill{position:absolute;left:0;top:0;bottom:0;width:0%;border-radius:6px;
+  background:linear-gradient(90deg,#3b2f6a,#7a68d8 55%,#b9a4ff);transition:width .09s linear}
+#soulWrap.lv2 #soulFill{background:linear-gradient(90deg,#4a2f7a,#9a6ae0 55%,#d8b4ff);
+  box-shadow:0 0 12px rgba(170,120,255,.6)}
+#soulWrap.lv3 #soulFill{background:linear-gradient(90deg,#7a3f6a,#e07ab0 50%,#ffe0b0);
+  box-shadow:0 0 16px rgba(255,150,180,.85)}
+#soulPips{position:absolute;inset:0;display:flex;justify-content:space-around;align-items:center;pointer-events:none}
+#soulPips i{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.28)}
+#soulPips i.on{background:#fff6da;box-shadow:0 0 6px #fff2c0}
+#soulTag{position:absolute;left:174px;top:-2px;font-size:10px;letter-spacing:2px;color:#b8a8e8;
+  white-space:nowrap;text-shadow:0 1px 3px #000;opacity:0;transition:opacity .2s}
+#soulTag.on{opacity:.95}
+
+/* 连段计数（刀魂连锁） */
+#chainBox{position:absolute;right:30px;top:38%;text-align:right;font-size:13px;letter-spacing:2px;
+  color:#c8b8ff;opacity:0;transition:opacity .18s;text-shadow:0 0 10px rgba(120,90,255,.7),0 1px 3px #000}
+#chainBox.on{opacity:1}
+#chainBox b{font-size:19px;color:#f0e6ff;font-style:italic}
+
+/* ── Boss 血条 ── */
+#bossBar{position:absolute;left:50%;top:6px;transform:translateX(-50%);width:min(54%,420px);
+  opacity:0;transition:opacity .3s;pointer-events:none}
+#bossBar.on{opacity:1}
+#bossName{font-size:14px;letter-spacing:6px;text-align:center;color:#f0d8a8;
+  text-shadow:0 0 12px rgba(180,30,20,.85),0 2px 4px #000;margin-bottom:2px}
+#bossPhaseName{font-size:10px;letter-spacing:4px;text-align:center;color:#d09070;margin-bottom:4px;
+  text-shadow:0 1px 3px #000}
+#bossTrack{position:relative;height:9px;border-radius:5px;background:rgba(0,0,0,.68);
+  box-shadow:inset 0 0 0 1px rgba(210,150,90,.42);overflow:hidden}
+#bossFill{position:absolute;left:0;top:0;bottom:0;width:100%;border-radius:5px;
+  background:linear-gradient(90deg,#6a0e0c,#c22a1e 60%,#e0543a);transition:width .18s ease-out}
+#bossFill.p2{background:linear-gradient(90deg,#8a1208,#d8341c 55%,#ff7a44)}
+#bossFill.p3{background:linear-gradient(90deg,#a81008,#ff3a18 50%,#ffc060)}
+#bossTrack .tick{position:absolute;top:-1px;bottom:-1px;width:2px;background:rgba(255,220,170,.55)}
+
+/* ── 同伴血条 ── */
+#allyBar{position:absolute;left:18px;bottom:150px;width:132px;opacity:0;transition:opacity .25s}
+#allyBar.on{opacity:1}
+#allyBar .abn{font-size:10px;letter-spacing:3px;color:#d8c8f0;margin-bottom:3px;text-shadow:0 1px 3px #000}
+#allyBar .abt{height:5px;border-radius:3px;background:rgba(0,0,0,.6);
+  box-shadow:inset 0 0 0 1px rgba(180,160,240,.34);overflow:hidden}
+#allyFill{display:block;height:100%;width:100%;border-radius:3px;
+  background:linear-gradient(90deg,#5a4a9a,#b8a0ff);transition:width .15s}
+#allyBar.down .abn{color:#c08a8a}
+#allyBar.down #allyFill{background:linear-gradient(90deg,#5a2020,#a04848)}
+#allyBar .abrev{font-size:9px;letter-spacing:2px;color:#f0b090;margin-top:2px;display:none}
+#allyBar.down .abrev{display:block}
+
+/* ── 过场：黑边 / 字幕 / 白闪 / 跳过层 ── */
+#cineTop,#cineBot{position:absolute;left:0;right:0;height:0;background:#07060a;z-index:42;
+  transition:height .42s cubic-bezier(.4,0,.2,1);pointer-events:none}
+#cineTop{top:0;box-shadow:0 6px 24px rgba(0,0,0,.7)}
+#cineBot{bottom:0;box-shadow:0 -6px 24px rgba(0,0,0,.7)}
+#cineTop.on,#cineBot.on{height:11%}
+#cineSub{position:absolute;left:50%;bottom:15%;transform:translateX(-50%);width:min(80%,720px);
+  text-align:center;opacity:0;transition:opacity .35s;z-index:44;pointer-events:none}
+#cineSub.on{opacity:1}
+#cineWho{font-size:12px;letter-spacing:6px;color:#d8b878;margin-bottom:6px;
+  text-shadow:0 0 10px rgba(0,0,0,.95)}
+#cineTxt{font-size:17px;line-height:1.9;letter-spacing:2px;color:#f2e8d4;
+  text-shadow:0 0 20px rgba(0,0,0,.95),0 2px 6px #000}
+#cineFlash{position:absolute;inset:0;z-index:46;opacity:0;pointer-events:none;background:#fff;
+  animation:cineFl .5s ease-out forwards}
+@keyframes cineFl{0%{opacity:.9}60%{opacity:.25}100%{opacity:0}}
+#cineLayer{position:absolute;inset:0;z-index:45;pointer-events:none}
+
+/* 刀魂满：屏幕边缘泛光 */
+#soulGlow{position:absolute;inset:0;pointer-events:none;z-index:6;opacity:0;transition:opacity .4s;
+  box-shadow:inset 0 0 70px rgba(255,150,190,.28),inset 0 0 160px rgba(140,100,255,.22)}
+#soulGlow.on{opacity:1}
 </style>
 </head>
 <body>
 <div id="stage">
 <canvas id="gl"></canvas>
+<div id="grade"></div>
+<div id="soulGlow"></div>
 
 <div id="hud">
   <div id="status">
@@ -207,9 +299,22 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
     <div class="bar sp"><i id="spF"></i></div>
     <div class="bar qi"><i id="qiF"></i></div>
   </div>
+  <div id="soulWrap"><div id="soulFill"></div><div id="soulPips"><i></i><i></i><i></i><i></i></div></div>
+  <div id="soulTag">刀魂</div>
+  <div id="chainBox">连 <b id="chainNum">0</b></div>
 
   <div id="joyBase"></div><div id="joyKnob"></div>
   <div id="target"><div id="tgtName"></div><div id="tgtBar"><i id="tgtFill"></i></div></div>
+  <div id="bossBar">
+    <div id="bossName"></div>
+    <div id="bossPhaseName"></div>
+    <div id="bossTrack"><i id="bossFill"></i><span class="tick" style="left:33.3%"></span><span class="tick" style="left:66.6%"></span></div>
+  </div>
+  <div id="allyBar">
+    <div class="abn">山与晨</div>
+    <div class="abt"><i id="allyFill"></i></div>
+    <div class="abrev">重伤 · 待救</div>
+  </div>
 
   <div id="combo"><div id="comboBox">0</div><div id="comboTag">连击</div></div>
   <div id="toast"></div>
@@ -220,6 +325,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
   <div id="regionBanner"></div>
   <div id="objList"></div>
   <div id="chapterName"></div>
+  <div id="sideQuest"></div>
   <div id="questHint"></div>
   <div id="dlg">
     <div id="dlgName"></div>
@@ -241,6 +347,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 </div>
 
 <div id="boot"><div id="bootT">江 湖</div><div id="bootS">正在点灯</div></div>
+
+<div id="cineTop"></div>
+<div id="cineBot"></div>
+<div id="cineSub"><div id="cineWho"></div><div id="cineTxt"></div></div>
+<div id="cineFlash"></div>
+<div id="cineLayer"></div>
 </div>
 <div id="rotateTip">
   <div><span class="ico">⟳</span>请把手机横过来握持</div>
@@ -248,23 +360,28 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 <div id="err"></div>
 
 <script src="js/three.min.js"></script>
-<script src="js/core.js?v=116"></script>
-<script src="js/terrain.js?v=116"></script>
-<script src="js/world.js?v=116"></script>
-<script src="js/fx.js?v=116"></script>
-<script src="js/slash.js?v=116"></script>
-<script src="js/weapon.js?v=116"></script>
-<script src="js/weapons.js?v=116"></script>
-<script src="js/combat.js?v=116"></script>
-<script src="js/hero.js?v=116"></script>
-<script src="js/foe.js?v=116"></script>
-<script src="js/interact.js?v=116"></script>
-<script src="js/objectives.js?v=116"></script>
-<script src="js/story.js?v=116"></script>
-<script src="js/npc.js?v=116"></script>
-<script src="js/minimap.js?v=116"></script>
-<script src="js/ui.js?v=116"></script>
-<script src="js/game.js?v=116"></script>
+<script src="js/core.js?v=208"></script>
+<script src="js/terrain.js?v=208"></script>
+<script src="js/world.js?v=208"></script>
+<script src="js/ambience.js?v=208"></script>
+<script src="js/fx.js?v=208"></script>
+<script src="js/slash.js?v=208"></script>
+<script src="js/weapon.js?v=208"></script>
+<script src="js/weapons.js?v=208"></script>
+<script src="js/soul.js?v=208"></script>
+<script src="js/combat.js?v=208"></script>
+<script src="js/cinema.js?v=208"></script>
+<script src="js/hero.js?v=208"></script>
+<script src="js/foe.js?v=208"></script>
+<script src="js/boss.js?v=208"></script>
+<script src="js/interact.js?v=208"></script>
+<script src="js/objectives.js?v=208"></script>
+<script src="js/story.js?v=208"></script>
+<script src="js/npc.js?v=208"></script>
+<script src="js/ally.js?v=208"></script>
+<script src="js/minimap.js?v=208"></script>
+<script src="js/ui.js?v=208"></script>
+<script src="js/game.js?v=208"></script>
 <script>
 J.showRotateTip = function () {
   var el = document.getElementById('rotateTip');

@@ -16,7 +16,7 @@ J.WINFO = {
   arcMul: 1.0,
   staminaMul: 1.0,
   poiseMul: 1.6,       // 破防能力
-  cancelBase: 0.10,    // 全局取消窗口偏置
+  cancelBase: 0.06,    // 全局取消窗口偏置
   reach: 3.35,
   arc: 1.48,
   atk: 32,
@@ -126,6 +126,14 @@ J.MOVES = {
     name: '开山', dur: 1.00, hit: [0.30, 0.60], cw: 0.94,
     dmg: 26, hits: 4, kb: 2.6, lunge: 4.4, anim: 'chargeSlash', type: 'skill',
     stamina: 0, qi: 45, guardBreak: true, poise: 2.2, next: {}
+  },
+
+  /* ══════ 九、刀魂满：太玄 · 一刀（真正的杀招） ══════ */
+  soulMove: {
+    name: '太玄 · 一刀', dur: 1.45, hit: [0.40, 0.62], cw: 0.99,
+    dmg: 235, kb: 7.0, lunge: 6.0, anim: 'finisherBlade', type: 'finisher',
+    stamina: 0, qi: 0, soulCost: 100, poise: 5.0, reach: 8.6, arc: 3.15,
+    next: {}
   },
 
   /* ══════ 八、专属终结技（连击数达标解锁） ══════ */
