@@ -164,6 +164,90 @@ J.UI = {
     this.flashText('✓ ' + name);
   },
 
+  /* ── 剧情对话 ── */
+  showDialog: function (name, lines, onEnd) {
+    var self = this;
+    this._dlgLines = lines.slice();
+    this._dlgIdx = 0;
+    this._dlgEnd = onEnd;
+    this.$dlg = this.$dlg || document.getElementById('dlg');
+    this.$dlgName = this.$dlgName || document.getElementById('dlgName');
+    this.$dlgText = this.$dlgText || document.getElementById('dlgText');
+    this.$dlgName.textContent = name;
+    this._dlgShowLine();
+    this.$dlg.classList.add('on');
+    if (!this._dlgBound) {
+      this._dlgBound = true;
+      this.$dlg.addEventListener('pointerdown', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        self.dialogNext();
+      });
+    }
+  },
+  _dlgShowLine: function () {
+    if (!this.$dlgText) return;
+    this.$dlgText.textContent = this._dlgLines[this._dlgIdx] || '';
+  },
+  dialogNext: function () {
+    if (!this.$dlg) return;
+    this._dlgIdx++;
+    if (this._dlgIdx >= this._dlgLines.length) {
+      this.$dlg.classList.remove('on');
+      var cb = this._dlgEnd;
+      this._dlgEnd = null;
+      if (cb) cb();
+    } else {
+      this._dlgShowLine();
+    }
+  },
+  isDialogOpen: function () {
+    return this.$dlg && this.$dlg.classList.contains('on');
+  },
+
+  /* ── 章节与任务 ── */
+  setChapter: function (txt) {
+    var el = document.getElementById('chapterName');
+    if (el) el.textContent = txt || '';
+  },
+  refreshQuests: function () {
+    var el = document.getElementById('objList');
+    if (!el || !J.Story) return;
+    var qs = J.Story.QUESTS, html = '';
+    var shown = 0;
+    for (var i = 0; i < qs.length; i++) {
+      var st = J.Story.quest[qs[i].id];
+      if (st === 'done') {
+        html += '<div class="oi ok" style="display:block">' + qs[i].name + '</div>';
+        shown++;
+      } else if (st === 'active') {
+        html += '<div class="oi cur" style="display:block">' + qs[i].name + '</div>';
+        shown++;
+        break;
+      }
+    }
+    /* 只保留最近 5 条 */
+    el.innerHTML = html;
+  },
+  updateQuestHint: function (P) {
+    var el = document.getElementById('questHint');
+    if (!el || !J.Story) return;
+    var q = J.Story.currentQuest();
+    if (!q) { el.textContent = ''; return; }
+    var tx = q.x, tz = q.z;
+    if (q.type === 'talk' && q.npc && J.NPC) {
+      var np = J.NPC.get(q.npc);
+      if (np) { tx = np.pos.x; tz = np.pos.z; }
+    }
+    if (q.type === 'boss' && J.boss) { tx = J.boss.pos.x; tz = J.boss.pos.z; }
+    var d = (tx !== undefined) ? Math.round(Math.hypot(tx - P.pos.x, tz - P.pos.z)) : null;
+    el.innerHTML = '◆ <b>' + q.name + '</b>' + (d !== null ? '<span class="dist">' + d + 'm</span>' : '');
+  },
+
+  showUseBtn: function (on) {
+    var b = document.getElementById('bUse');
+    if (b) b.classList.toggle('on', !!on);
+  },
+
   moveName: function (txt) {
     if (!this.$moveName) return;
     this.$moveName.textContent = txt;

@@ -24,6 +24,9 @@ J.boot = function () {
     J.UI.init();
     if (J.Obj) J.Obj.init();
     if (J.World.placeInteractables) J.World.placeInteractables();
+    if (J.NPC) J.NPC.init();
+    if (J.Story) J.Story.init();
+    if (J.P.weapon.setStage) J.P.weapon.setStage(J.Story ? J.Story.bladeStage : 1);
     if (J.Minimap) J.Minimap.init();
     J.startLoop();
     setTimeout(function () { bootEl.classList.add('gone'); }, 260);
@@ -1066,8 +1069,11 @@ J.startLoop = function () {
       J.World.update(dt, J.clock, J.P.pos);
       J.updateCamera(raw);
       J.Interact.update(dt, J.P.pos);
+      J.NPC.update(dt, J.clock, J.P);
+      J.Story.update(dt, J.P);
       J.Obj.update(dt, J.P);
       J.UI.update(raw);
+      J.UI.updateQuestHint(J.P);
       J.Minimap.update(dt, J.P);
       J.updateSun(J.P.pos.x, J.P.pos.z);
       J.sky.position.copy(J.C.position);

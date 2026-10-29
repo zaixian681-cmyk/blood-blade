@@ -167,6 +167,88 @@ J.Minimap = (function () {
       }
     }
 
+    /* ══ 任务目标：醒目的金色菱形 + 脉冲圈 ══ */
+    var tq = J.Story && J.Story.currentQuest ? J.Story.currentQuest() : null;
+    if (tq) {
+      /* 取目标坐标：talk 类型跟随 NPC */
+      var tX = tq.x, tZ = tq.z;
+      if (tq.type === 'talk' && tq.npc && J.NPC) {
+        var np = J.NPC.get(tq.npc);
+        if (np) { tX = np.pos.x; tZ = np.pos.z; }
+      }
+      if (tq.type === 'boss' && J.boss) { tX = J.boss.pos.x; tZ = J.boss.pos.z; }
+
+      if (tX !== undefined && tZ !== undefined) {
+        var qx, qz, inView = true;
+        if (M.open) {
+          qx = (tX + half) / worldS * W;
+          qz = (tZ + half) / worldS * H;
+        } else {
+          var qd = Math.hypot(tX - P.pos.x, tZ - P.pos.z);
+          var lim = M.viewR * 0.86;
+          if (qd > lim) {
+            inView = false;
+            /* 贴到边缘显示方向 */
+            var ang = Math.atan2(tZ - P.pos.z, tX - P.pos.x);
+            qx = W / 2 + Math.cos(ang) * (W / 2 - 9);
+            qz = H / 2 + Math.sin(ang) * (H / 2 - 9);
+          } else {
+            qx = W / 2 + (tX - P.pos.x) / M.viewR * (W / 2);
+            qz = H / 2 + (tZ - P.pos.z) / M.viewR * (H / 2);
+          }
+        }
+
+        var pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.005);
+        var baseR = M.open ? 7 : 6;
+
+        /* 外脉冲圈 */
+        ctx.beginPath();
+        ctx.arc(qx, qz, baseR + 4 + pulse * 5, 0, 6.283);
+        ctx.strokeStyle = 'rgba(255,206,110,' + (0.55 - pulse * 0.4) + ')';
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+
+        /* 金色菱形 */
+        ctx.save();
+        ctx.translate(qx, qz);
+        ctx.rotate(Math.PI / 4);
+        var sz = baseR * 0.78;
+        ctx.fillStyle = '#ffd166';
+        ctx.shadowColor = 'rgba(255,190,80,0.95)';
+        ctx.shadowBlur = 8;
+        ctx.fillRect(-sz / 2, -sz / 2, sz, sz);
+        ctx.strokeStyle = '#4a3208';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(-sz / 2, -sz / 2, sz, sz);
+        ctx.restore();
+
+        /* 距离文字（小地图不显示，全图显示） */
+        if (M.open) {
+          var dd = Math.hypot(tX - P.pos.x, tZ - P.pos.z);
+          ctx.fillStyle = '#ffe0a0';
+          ctx.font = 'bold 10px serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(Math.round(dd) + 'm', qx, qz + 20);
+        } else if (!inView) {
+          /* 边缘箭头 */
+          ctx.save();
+          ctx.translate(qx, qz);
+          var ea = Math.atan2(tZ - P.pos.z, tX - P.pos.x);
+          ctx.rotate(ea + Math.PI / 2);
+          ctx.beginPath();
+          ctx.moveTo(0, -6);
+          ctx.lineTo(4, 4);
+          ctx.lineTo(-4, 4);
+          ctx.closePath();
+          ctx.fillStyle = '#ffd166';
+          ctx.shadowColor = 'rgba(255,190,80,0.9)';
+          ctx.shadowBlur = 6;
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    }
+
     /* 玩家箭头 */
     ctx.save();
     ctx.translate(px, pz);

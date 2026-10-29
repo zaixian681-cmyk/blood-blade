@@ -267,6 +267,7 @@
     },
 
     die: function () {
+      if (J.Story && J.Story.onKill) J.Story.onKill(this);
       this.dead = true;
       this.state = 'dead';
       this.tim = 0;

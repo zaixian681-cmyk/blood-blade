@@ -458,14 +458,33 @@ J.Weapon = (function () {
     var obj = {
       root: root, parts: parts, blade: blade, bladeMat: bladeMat,
       gemMat: gemMat, aura: aura, light: light,
+      stage: 1,
       glow: 1,
+      /* 太玄之刃三阶觉醒：封刃 → 鸣刃 → 太玄觉醒 */
+      setStage: function (n) {
+        this.stage = n;
+        var cfg = [null,
+          { core: 0xcfd8ff, tint: 0x8a7cf0, emis: 0.30, aura: 0.75, light: 0x9aa8d0, li: 0.45 },
+          { core: 0xdcd0ff, tint: 0xa07cff, emis: 0.75, aura: 1.30, light: 0xb090ff, li: 0.85 },
+          { core: 0xf0e6ff, tint: 0xc09aff, emis: 1.35, aura: 2.10, light: 0xd0a8ff, li: 1.45 }
+        ][n] || null;
+        if (!cfg) return;
+        aura.userData.mat.uniforms.uCore.value.setHex(cfg.core);
+        aura.userData.mat.uniforms.uTint.value.setHex(cfg.tint);
+        bladeMat.emissiveIntensity = cfg.emis;
+        obj._auraBase = cfg.aura;
+        light.color.setHex(cfg.light);
+        obj._lightBase = cfg.li;
+        /* 灵玉随阶变亮 */
+        gemMat.emissive.setHex(n >= 2 ? 0x7a52ff : 0x5a3cff);
+      },
       update: function (dt, t, glowTarget) {
         this.glow = J.U.damp(this.glow, glowTarget === undefined ? 1 : glowTarget, 6, dt);
         aura.userData.mat.uniforms.uTime.value = t;
-        aura.userData.mat.uniforms.uPower.value = 0.55 + this.glow * 0.9;
+        aura.userData.mat.uniforms.uPower.value = (this._auraBase || 0.75) * (0.75 + this.glow * 0.5);
         bladeMat.emissiveIntensity = 0.35 + this.glow * 0.55;
         gemMat.emissiveIntensity = 1.8 + this.glow * 1.4;
-        light.intensity = 0.30 * this.glow + 0.10 * Math.sin(t * 1.8);
+        light.intensity = (this._lightBase || 0.45) * (0.7 + this.glow * 0.5) + 0.10 * Math.sin(t * 1.8);
         halo.material.opacity = 0.14 + this.glow * 0.12 + Math.sin(t * 2.2) * 0.02;
       }
     };

@@ -155,6 +155,28 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
   display:none;box-shadow:inset 0 0 0 2px rgba(255,220,150,.85),0 0 22px rgba(255,190,90,.6)}
 #bUse.on{display:flex}
 
+/* 当前目标指引 */
+#questHint{position:absolute;left:50%;top:52px;transform:translateX(-50%);
+  font-size:13px;letter-spacing:2px;color:#ffd9a0;white-space:nowrap;
+  text-shadow:0 0 10px rgba(0,0,0,.95),0 0 18px rgba(255,180,80,.35);opacity:.95}
+#questHint b{color:#ffe8b8;font-weight:normal}
+#questHint .dist{color:#c9a45a;margin-left:10px}
+
+/* 剧情对话 */
+#chapterName{position:absolute;left:16px;top:74px;font-size:11px;letter-spacing:3px;
+  color:#c9a45a;opacity:.85;text-shadow:0 1px 3px #000}
+#dlg{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);
+  width:min(86%,760px);padding:14px 20px 18px;border-radius:12px;
+  background:linear-gradient(180deg,rgba(14,12,10,.86),rgba(8,7,6,.94));
+  box-shadow:inset 0 0 0 1px rgba(214,180,120,.35),0 8px 30px rgba(0,0,0,.6);
+  opacity:0;pointer-events:none;transition:opacity .2s;z-index:30}
+#dlg.on{opacity:1;pointer-events:auto}
+#dlgName{font-size:13px;letter-spacing:4px;color:#e8c884;margin-bottom:7px}
+#dlgText{font-size:15px;line-height:1.85;color:#ece2cc;letter-spacing:.5px;min-height:54px}
+#dlgTip{position:absolute;right:18px;bottom:8px;font-size:11px;color:#9a8f78;
+  letter-spacing:2px;animation:dlgBlink 1.6s ease-in-out infinite}
+@keyframes dlgBlink{0%,100%{opacity:.35}50%{opacity:.9}}
+
 /* 小地图 */
 #minimapWrap{position:absolute;right:14px;top:12px;width:112px;height:112px;
   pointer-events:auto;transition:all .22s;filter:drop-shadow(0 3px 10px rgba(0,0,0,.6))}
@@ -197,6 +219,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
   <div id="interactHint"></div>
   <div id="regionBanner"></div>
   <div id="objList"></div>
+  <div id="chapterName"></div>
+  <div id="questHint"></div>
+  <div id="dlg">
+    <div id="dlgName"></div>
+    <div id="dlgText"></div>
+    <div id="dlgTip">点击继续 &#9656;</div>
+  </div>
   <div id="minimapWrap"><canvas id="minimap" width="112" height="112"></canvas></div>
 
   <div id="joy"></div>
@@ -219,21 +248,23 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 <div id="err"></div>
 
 <script src="js/three.min.js"></script>
-<script src="js/core.js?v=107"></script>
-<script src="js/terrain.js?v=107"></script>
-<script src="js/world.js?v=107"></script>
-<script src="js/fx.js?v=107"></script>
-<script src="js/slash.js?v=107"></script>
-<script src="js/weapon.js?v=107"></script>
-<script src="js/weapons.js?v=107"></script>
-<script src="js/combat.js?v=107"></script>
-<script src="js/hero.js?v=107"></script>
-<script src="js/foe.js?v=107"></script>
-<script src="js/interact.js?v=107"></script>
-<script src="js/objectives.js?v=107"></script>
-<script src="js/minimap.js?v=107"></script>
-<script src="js/ui.js?v=107"></script>
-<script src="js/game.js?v=107"></script>
+<script src="js/core.js?v=111"></script>
+<script src="js/terrain.js?v=111"></script>
+<script src="js/world.js?v=111"></script>
+<script src="js/fx.js?v=111"></script>
+<script src="js/slash.js?v=111"></script>
+<script src="js/weapon.js?v=111"></script>
+<script src="js/weapons.js?v=111"></script>
+<script src="js/combat.js?v=111"></script>
+<script src="js/hero.js?v=111"></script>
+<script src="js/foe.js?v=111"></script>
+<script src="js/interact.js?v=111"></script>
+<script src="js/objectives.js?v=111"></script>
+<script src="js/story.js?v=111"></script>
+<script src="js/npc.js?v=111"></script>
+<script src="js/minimap.js?v=111"></script>
+<script src="js/ui.js?v=111"></script>
+<script src="js/game.js?v=111"></script>
 <script>
 J.showRotateTip = function () {
   var el = document.getElementById('rotateTip');
