@@ -7,16 +7,17 @@
 <title>江湖 · 一刀</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
-html,body{width:100%;height:100%;overflow:hidden;background:#0b0a09;font-family:"Songti SC","STSong","Noto Serif CJK SC",serif;color:#e8e0d0}
-#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Songti SC","STSong","Noto Serif CJK SC",serif;color:#e8e0d0}
+#stage{position:fixed;left:0;top:0;overflow:hidden;background:#0b0a09;transform-origin:0 0;will-change:transform}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 
 /* ── 统一 HUD ── */
-#hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+#hud{position:absolute;inset:0;pointer-events:none;z-index:10}
 .hide{opacity:0!important;pointer-events:none!important}
 #hud>*{transition:opacity .25s}
 
 /* 左上 状态 */
-#status{position:absolute;left:16px;top:calc(14px + env(safe-area-inset-top));width:150px}
+#status{position:absolute;left:18px;top:12px;width:170px}
 .bar{position:relative;height:9px;border-radius:5px;background:rgba(0,0,0,.55);
   box-shadow:inset 0 0 0 1px rgba(212,175,110,.35);overflow:hidden;margin-bottom:6px}
 .bar>i{position:absolute;inset:0;width:100%;transform-origin:left center;border-radius:5px;transition:width .12s linear}
@@ -27,8 +28,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0b0a09;font-family:
   color:rgba(255,255,255,.75);letter-spacing:.5px;font-family:ui-monospace,monospace}
 
 /* 顶部 敌人血条 */
-#target{position:absolute;left:50%;top:calc(18px + env(safe-area-inset-top));transform:translateX(-50%);
-  width:min(58%,300px);opacity:0;transition:opacity .22s}
+#target{position:absolute;left:50%;top:10px;transform:translateX(-50%);
+  width:min(46%,300px);opacity:0;transition:opacity .22s}
 #target.on{opacity:1}
 #tgtName{font-size:12px;letter-spacing:3px;text-align:center;color:#e6c98a;margin-bottom:5px;
   text-shadow:0 0 8px rgba(0,0,0,.9),0 1px 2px #000}
@@ -38,43 +39,43 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0b0a09;font-family:
   background:linear-gradient(90deg,#7a1414,#c73a2e 65%,#e2624a);transition:width .18s ease-out}
 
 /* 连击数 */
-#combo{position:absolute;right:22px;top:34%;text-align:right;opacity:0;transition:opacity .25s}
+#combo{position:absolute;right:26px;top:26%;text-align:right;opacity:0;transition:opacity .25s}
 #combo.on{opacity:1}
-#comboBox{font-size:52px;line-height:.95;font-weight:700;color:#ffdf9e;
+#comboBox{font-size:46px;line-height:.95;font-weight:700;color:#ffdf9e;
   text-shadow:0 0 18px rgba(255,160,60,.75),0 2px 6px rgba(0,0,0,.9);font-style:italic}
 #comboTag{font-size:12px;letter-spacing:5px;color:#e8b96a;margin-top:2px;text-shadow:0 1px 3px #000}
 
 /* 中央提示 */
-#toast{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);text-align:center;
+#toast{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);text-align:center;
   font-size:20px;letter-spacing:6px;color:#f0dcb0;opacity:0;transition:opacity .4s;
   text-shadow:0 0 20px rgba(0,0,0,.95),0 0 40px rgba(220,160,60,.4)}
 #toast.on{opacity:1}
 
 /* 底部左：摇杆 */
-#joy{position:absolute;left:0;bottom:0;width:44%;height:230px;pointer-events:auto}
-#joyBase{position:absolute;left:74px;bottom:calc(78px + env(safe-area-inset-bottom));width:108px;height:108px;
+#joy{position:absolute;left:0;bottom:0;width:38%;height:60%;pointer-events:auto}
+#joyBase{position:absolute;left:96px;top:0;width:104px;height:104px;transform:translate(-50%,-50%);
   border-radius:50%;background:radial-gradient(circle,rgba(255,240,210,.09),rgba(255,240,210,.03) 70%,transparent);
-  box-shadow:inset 0 0 0 1.5px rgba(230,200,150,.28);transform:translate(-50%,50%)}
-#joyKnob{position:absolute;left:0;top:0;width:46px;height:46px;border-radius:50%;
+  box-shadow:inset 0 0 0 1.5px rgba(230,200,150,.28);}
+#joyKnob{position:absolute;left:96px;top:0;width:44px;height:44px;border-radius:50%;
   background:radial-gradient(circle at 35% 32%,rgba(255,246,225,.85),rgba(210,175,120,.55));
   box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 16px rgba(240,205,140,.35);transform:translate(-50%,-50%)}
 
 /* 底部右：战斗按钮 */
-#acts{position:absolute;right:0;bottom:0;width:56%;height:260px;pointer-events:auto}
+#acts{position:absolute;right:0;bottom:0;width:48%;height:72%;pointer-events:auto}
 .btn{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:15px;letter-spacing:1px;color:#f3e5c8;
   background:radial-gradient(circle at 38% 32%,rgba(90,74,54,.78),rgba(38,30,22,.72));
   box-shadow:inset 0 0 0 1.5px rgba(215,180,120,.42),0 4px 14px rgba(0,0,0,.45);
   transition:transform .07s,box-shadow .12s}
 .btn:active{transform:scale(.92);box-shadow:inset 0 0 0 2px rgba(255,220,150,.75),0 0 20px rgba(240,190,110,.5)}
-#bAtk{right:calc(24px + env(safe-area-inset-right));bottom:calc(84px + env(safe-area-inset-bottom));width:88px;height:88px;font-size:19px}
-#bHeavy{right:calc(120px + env(safe-area-inset-right));bottom:calc(126px + env(safe-area-inset-bottom));width:64px;height:64px;font-size:14px}
-#bDash{right:calc(30px + env(safe-area-inset-right));bottom:calc(190px + env(safe-area-inset-bottom));width:62px;height:62px;font-size:14px}
-#bLock{right:calc(124px + env(safe-area-inset-right));bottom:calc(48px + env(safe-area-inset-bottom));width:52px;height:52px;font-size:13px}
-#bGuard{right:calc(168px + env(safe-area-inset-right));bottom:calc(96px + env(safe-area-inset-bottom));width:58px;height:58px;font-size:14px}
+#bAtk{right:26px;bottom:30px;width:84px;height:84px;font-size:19px}
+#bHeavy{right:122px;bottom:44px;width:62px;height:62px;font-size:14px}
+#bDash{right:36px;bottom:126px;width:60px;height:60px;font-size:14px}
+#bLock{right:126px;bottom:118px;width:50px;height:50px;font-size:13px}
+#bGuard{right:206px;bottom:30px;width:58px;height:58px;font-size:14px}
 
 /* 加载 */
-#boot{position:fixed;inset:0;background:#0b0a09;z-index:50;display:flex;flex-direction:column;
+#boot{position:absolute;inset:0;background:#0b0a09;z-index:50;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:16px;transition:opacity .6s}
 #bootT{font-size:26px;letter-spacing:12px;color:#e2c894;text-indent:12px}
 #bootS{font-size:12px;letter-spacing:4px;color:#7a6f5e}
@@ -97,6 +98,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0b0a09;font-family:
 </style>
 </head>
 <body>
+<div id="stage">
 <canvas id="gl"></canvas>
 
 <div id="hud">
@@ -105,12 +107,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0b0a09;font-family:
     <div class="bar sp"><i id="spF"></i></div>
   </div>
 
+  <div id="joyBase"></div><div id="joyKnob"></div>
   <div id="target"><div id="tgtName"></div><div id="tgtBar"><i id="tgtFill"></i></div></div>
 
   <div id="combo"><div id="comboBox">0</div><div id="comboTag">连击</div></div>
   <div id="toast"></div>
 
-  <div id="joy"><div id="joyBase"></div><div id="joyKnob"></div></div>
+  <div id="joy"></div>
   <div id="acts">
     <div class="btn" id="bAtk">斩</div>
     <div class="btn" id="bHeavy">重</div>
@@ -121,17 +124,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0b0a09;font-family:
 </div>
 
 <div id="boot"><div id="bootT">江 湖</div><div id="bootS">正在点灯</div></div>
+</div>
 <div id="err"></div>
 
 <script src="js/three.min.js"></script>
-<script src="js/core.js?v=18"></script>
-<script src="js/terrain.js?v=18"></script>
-<script src="js/world.js?v=18"></script>
-<script src="js/fx.js?v=18"></script>
-<script src="js/weapon.js?v=18"></script>
-<script src="js/hero.js?v=18"></script>
-<script src="js/foe.js?v=18"></script>
-<script src="js/ui.js?v=18"></script>
-<script src="js/game.js?v=18"></script>
+<script src="js/core.js?v=23"></script>
+<script src="js/terrain.js?v=23"></script>
+<script src="js/world.js?v=23"></script>
+<script src="js/fx.js?v=23"></script>
+<script src="js/weapon.js?v=23"></script>
+<script src="js/hero.js?v=23"></script>
+<script src="js/foe.js?v=23"></script>
+<script src="js/ui.js?v=23"></script>
+<script src="js/game.js?v=23"></script>
 </body>
 </html>

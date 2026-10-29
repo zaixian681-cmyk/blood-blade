@@ -34,12 +34,50 @@ J.U = {
   dist2: function (ax, az, bx, bz) { var dx = ax - bx, dz = az - bz; return dx * dx + dz * dz; }
 };
 
+/* ═══ 横屏舞台：整体旋转 90°，游戏始终按横屏尺寸渲染 ═══ */
+J.Stage = {
+  el: null, rotated: false, W: 0, H: 0,
+  init: function () {
+    J.Stage.el = document.getElementById('stage');
+    J.Stage.resize();
+    window.addEventListener('resize', J.Stage.resize);
+    window.addEventListener('orientationchange', function () { setTimeout(J.Stage.resize, 150); });
+  },
+  resize: function () {
+    var el = J.Stage.el; if (!el) return;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var land = vw > vh;
+    J.Stage.rotated = !land;
+    if (land) {
+      el.style.width = vw + 'px';
+      el.style.height = vh + 'px';
+      el.style.transform = 'none';
+    } else {
+      el.style.width = vh + 'px';        // 横屏的宽 = 竖屏的高
+      el.style.height = vw + 'px';
+      el.style.transform = 'rotate(90deg) translateY(-100%)';
+    }
+    J.Stage.W = el.clientWidth;
+    J.Stage.H = el.clientHeight;
+    if (J.R) {
+      J.R.setSize(J.Stage.W, J.Stage.H, false);
+      if (J.C) { J.C.aspect = J.Stage.W / J.Stage.H; J.C.updateProjectionMatrix(); }
+    }
+    if (J.UI && J.UI.layout) J.UI.layout();
+  },
+  /* 屏幕坐标 → stage 局部坐标 */
+  toLocal: function (cx, cy) {
+    if (!J.Stage.rotated) return { x: cx, y: cy };
+    return { x: cy, y: J.Stage.H - cx };
+  }
+};
+
 /* ── 渲染器 ── */
 J.initRenderer = function () {
   var cv = document.getElementById('gl');
   var r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: 'high-performance' });
-  r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  r.setSize(window.innerWidth, window.innerHeight, false);
+  r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  r.setSize(J.Stage.W || window.innerWidth, J.Stage.H || window.innerHeight, false);
   r.shadowMap.enabled = true;
   r.shadowMap.type = THREE.PCFSoftShadowMap;
   r.outputColorSpace = THREE.SRGBColorSpace;
@@ -51,7 +89,7 @@ J.initRenderer = function () {
   sc.fog = new THREE.FogExp2(0xbcccd6, 0.0021);
   J.S = sc;
 
-  var cam = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 900);
+  var cam = new THREE.PerspectiveCamera(62, (J.Stage.W || window.innerWidth) / (J.Stage.H || window.innerHeight), 0.1, 900);
   cam.position.set(0, 4, 10);
   J.C = cam;
 
@@ -59,11 +97,7 @@ J.initRenderer = function () {
   return r;
 };
 
-J.onResize = function () {
-  var w = window.innerWidth, h = window.innerHeight;
-  J.C.aspect = w / h; J.C.updateProjectionMatrix();
-  J.R.setSize(w, h, false);
-};
+J.onResize = function () { J.Stage.resize(); };
 
 /* ── 天空：渐变穹顶 ── */
 J.buildSky = function (topCol, midCol, botCol) {
@@ -102,7 +136,7 @@ J.buildSky = function (topCol, midCol, botCol) {
 
 /* ── 光照：斜阳低角度，长影子，最有武侠味 ── */
 J.initLights = function () {
-  var hemi = new THREE.HemisphereLight(0x9fb4c4, 0x40382c, 0.62);
+  var hemi = new THREE.HemisphereLight(0xa8becd, 0x4a4234, 0.92);
   J.S.add(hemi);
 
   var sun = new THREE.DirectionalLight(0xffc48a, 2.15);
@@ -361,13 +395,18 @@ J.initInput = function () {
 
   /* 鼠标视角（桌面调试） */
   var cv = J.R.domElement, mdown = false;
-  cv.addEventListener('mousedown', function (e) { mdown = true; IN._ox = e.clientX; IN._oy = e.clientY; });
+  cv.addEventListener('mousedown', function (e) {
+    mdown = true;
+    var p = J.Stage.toLocal(e.clientX, e.clientY);
+    IN._ox = p.x; IN._oy = p.y;
+  });
   window.addEventListener('mouseup', function () { mdown = false; });
   window.addEventListener('mousemove', function (e) {
     if (!mdown) return;
-    IN.lx += (e.clientX - IN._ox) * 0.005;
-    IN.ly += (e.clientY - IN._oy) * 0.004;
-    IN._ox = e.clientX; IN._oy = e.clientY;
+    var p = J.Stage.toLocal(e.clientX, e.clientY);
+    IN.lx += (p.x - IN._ox) * 0.005;
+    IN.ly += (p.y - IN._oy) * 0.004;
+    IN._ox = p.x; IN._oy = p.y;
   });
 
   /* 摇杆 */
@@ -375,13 +414,24 @@ J.initInput = function () {
   var base = document.getElementById('joyBase');
   var knob = document.getElementById('joyKnob');
   var R = 54;
+  var HOME = { x: 96, y: 0 };
 
-  function joyMove(e) {
-    var dx = e.clientX - IN._cx, dy = e.clientY - IN._cy;
+  function homeY() { return Math.max(80, J.Stage.H - 110); }
+  function placeHome() {
+    HOME.y = homeY();
+    base.style.left = HOME.x + 'px'; base.style.top = HOME.y + 'px';
+    knob.style.left = HOME.x + 'px'; knob.style.top = HOME.y + 'px';
+  }
+  placeHome();
+  J.IN._placeHome = placeHome;
+  J.IN._home = HOME;
+
+  function joyMove(lp) {
+    var dx = lp.x - IN._cx, dy = lp.y - IN._cy;
     var d = Math.hypot(dx, dy);
     if (d > R) { dx = dx / d * R; dy = dy / d * R; d = R; }
-    knob.style.left = (54 + dx) + 'px';
-    knob.style.top = (54 + dy) + 'px';
+    knob.style.left = (IN._cx + dx) + 'px';
+    knob.style.top = (IN._cy + dy) + 'px';
     IN.mag = Math.min(1, d / (R * 0.82));
     IN.mx = dx / R; IN.mz = dy / R;
     var l = Math.hypot(IN.mx, IN.mz);
@@ -389,25 +439,24 @@ J.initInput = function () {
   }
   joy.addEventListener('pointerdown', function (e) {
     e.preventDefault();
+    var lp = J.Stage.toLocal(e.clientX, e.clientY);
     IN.joyId = e.pointerId; IN.joyActive = true;
-    IN._cx = e.clientX; IN._cy = e.clientY;
-    base.style.left = e.clientX + 'px';
-    base.style.top = e.clientY + 'px';
-    base.style.bottom = 'auto';
-    base.style.transform = 'translate(-50%,-50%)';
-    knob.style.left = '54px'; knob.style.top = '54px';
-    joy.setPointerCapture(e.pointerId);
-    joyMove(e);
+    IN._cx = lp.x; IN._cy = lp.y;
+    base.style.left = lp.x + 'px';
+    base.style.top = lp.y + 'px';
+    knob.style.left = lp.x + 'px'; knob.style.top = lp.y + 'px';
+    try { joy.setPointerCapture(e.pointerId); } catch (err) { }
+    joyMove(lp);
   });
-  joy.addEventListener('pointermove', function (e) { if (e.pointerId === IN.joyId) { e.preventDefault(); joyMove(e); } });
+  joy.addEventListener('pointermove', function (e) {
+    if (e.pointerId !== IN.joyId) return;
+    e.preventDefault();
+    joyMove(J.Stage.toLocal(e.clientX, e.clientY));
+  });
   function joyEnd(e) {
     if (e.pointerId !== IN.joyId) return;
     IN.joyId = -1; IN.joyActive = false; IN.mx = IN.mz = IN.mag = 0;
-    knob.style.left = '54px'; knob.style.top = '54px';
-    base.style.left = '74px';
-    base.style.bottom = 'calc(78px + env(safe-area-inset-bottom))';
-    base.style.top = 'auto';
-    base.style.transform = 'translate(-50%,50%)';
+    placeHome();
   }
   joy.addEventListener('pointerup', joyEnd);
   joy.addEventListener('pointercancel', joyEnd);
@@ -417,14 +466,16 @@ J.initInput = function () {
   cv.addEventListener('pointerdown', function (e) {
     if (lookId !== -1) return;
     lookId = e.pointerId; IN.lookId = lookId;
-    IN._ox = e.clientX; IN._oy = e.clientY;
-    cv.setPointerCapture(e.pointerId);
+    var p0 = J.Stage.toLocal(e.clientX, e.clientY);
+    IN._ox = p0.x; IN._oy = p0.y;
+    try { cv.setPointerCapture(e.pointerId); } catch (err) { }
   });
   cv.addEventListener('pointermove', function (e) {
     if (e.pointerId !== lookId) return;
-    IN.lx += (e.clientX - IN._ox) * 0.0072;
-    IN.ly += (e.clientY - IN._oy) * 0.0058;
-    IN._ox = e.clientX; IN._oy = e.clientY;
+    var p = J.Stage.toLocal(e.clientX, e.clientY);
+    IN.lx += (p.x - IN._ox) * 0.0072;
+    IN.ly += (p.y - IN._oy) * 0.0058;
+    IN._ox = p.x; IN._oy = p.y;
   });
   function lookEnd(e) { if (e.pointerId === lookId) { lookId = -1; IN.lookId = -1; } }
   cv.addEventListener('pointerup', lookEnd);

@@ -244,7 +244,7 @@ J.World = (function () {
       B.cyl(x, y0 + i * (h / seg), z, r, h / seg * 0.96, 6, i % 2 ? C.bamboo : C.bambooL);
     }
     var topY = y0 + h;
-    for (var k = 0; k < 9; k++) {
+    for (var k = 0; k < 13; k++) {
       var a = Math.random() * 6.28;
       var lf = 0.9 + Math.random() * 0.8;
       var ly = topY - Math.random() * 1.8;
@@ -256,12 +256,19 @@ J.World = (function () {
 
   function pine(x, z, s) {
     var y0 = hAt(x, z);
-    B.cyl(x, y0, z, 0.13 * s, 2.0 * s, 6, C.woodD);
-    // 三层锥形树冠
+    B.cyl(x, y0, z, 0.15 * s, 2.3 * s, 6, C.woodD);
+    var cols = [0x35481f, 0x3d5524, 0x2c3d1a];
     for (var i = 0; i < 3; i++) {
-      var yy = y0 + 1.4 * s + i * 0.95 * s;
-      var rr = (1.55 - i * 0.38) * s;
-      B.cyl(x, yy, z, rr, 1.15 * s, 7, i % 2 ? C.leaf : 0x2f4020, { r2: rr * 0.16 });
+      var yy = y0 + 1.7 * s + i * 0.80 * s;
+      var rr = (1.65 - i * 0.42) * s;
+      // r2 收到 0.62，伞形不尖
+      B.cyl(x, yy, z, rr, 0.95 * s, 9, cols[i], { r2: rr * 0.62 });
+      // 侧面垂枝
+      for (var k = 0; k < 4; k++) {
+        var a = (k / 4) * 6.283 + i * 1.1;
+        B.box(x + Math.cos(a) * rr * 0.82, yy + 0.28 * s, z + Math.sin(a) * rr * 0.82,
+          rr * 0.62, 0.16 * s, rr * 0.42, cols[i], { ry: a, rz: -0.22 });
+      }
     }
     J.Col.add(x - 0.16, y0, z - 0.16, x + 0.16, y0 + 4 * s, z + 0.16, 'thin');
   }
@@ -370,7 +377,8 @@ J.World = (function () {
       var ph3 = hAt(px3, pz3);
       if (ph3 < 8 || ph3 > 60) continue;
       if (J.Terrain.slopeAt(px3, pz3) > 0.8) continue;
-      pine(px3, pz3, rnd(0.9, 1.7));
+      if (Math.hypot(px3 + 104, pz3 + 46) < 36) continue;   // 别挡住出生视野
+      pine(px3, pz3, rnd(0.65, 1.15));
     }
 
     /* ── 崖顶楼阁群（远景剪影） ── */

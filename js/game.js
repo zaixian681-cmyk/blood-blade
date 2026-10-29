@@ -15,6 +15,7 @@ var MOVES = {
 J.boot = function () {
   var bootEl = document.getElementById('boot');
   try {
+    J.Stage.init();
     J.initRenderer();
     J.buildSky(0x3f6278, 0x9db6c0, 0xd8c8a8);
     J.initLights();
@@ -51,7 +52,7 @@ J.initPlayer = function () {
     yaw: W.spawn.yaw, vy: 0, onGround: true,
     hp: 240, maxHp: 240, stamina: 100, maxStamina: 100,
     state: 'idle', tim: 0, move: null, moveId: '', hitSet: [],
-    camYaw: W.spawn.yaw + Math.PI, camPitch: 0.01, camDist: 3.9,
+    camYaw: W.spawn.yaw + Math.PI, camPitch: 0.07, camDist: 4.05,
     target: null, targetIdx: 0,
     blockT: 0, parryWindow: 0, blocking: false,
     invuln: 0, dashDir: new THREE.Vector3(),
@@ -670,7 +671,7 @@ J.updateCamera = function (dt) {
   C.lookAt(focus.x, focus.y + 0.05, focus.z + 0.0);
 
   // FOV 随速度轻微变化
-  var wantFov = 68 + Math.min(7, (P.animSpeed || 0) * 0.9);
+  var wantFov = 60 + Math.min(6, (P.animSpeed || 0) * 0.8);
   C.fov = J.U.damp(C.fov, wantFov, 4, dt);
   C.updateProjectionMatrix();
 };

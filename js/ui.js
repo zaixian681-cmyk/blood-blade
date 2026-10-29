@@ -13,6 +13,7 @@ J.UI = {
     this._lastHp = -1; this._lastSp = -1; this._lastCombo = -1;
     this._toastT = 0;
     this._tgtE = null;
+    this.layout();
   },
 
   update: function (dt) {
@@ -62,6 +63,10 @@ J.UI = {
       this._toastT -= dt;
       if (this._toastT <= 0) this.$toast.classList.remove('on');
     }
+  },
+
+  layout: function () {
+    if (J.IN && J.IN._placeHome) J.IN._placeHome();
   },
 
   toast: function (txt, dur) {
