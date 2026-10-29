@@ -293,10 +293,6 @@ J.Amb = (function () {
     var reedMat = new THREE.MeshLambertMaterial({ color: 0x7d8a4a, side: THREE.DoubleSide });
     place(reedGeo, reedMat, 520, { minS: 0.6, maxS: 1.45, maxSlope: 0.8, nearRiver: 24, yOff: 0.8, tilt: 0.22 });
 
-    /* 崖边枯木：少量深色锥，给崖顶一点轮廓 */
-    var deadGeo = new THREE.ConeGeometry(0.28, 2.6, 4, 1, true);
-    var deadMat = new THREE.MeshLambertMaterial({ color: 0x4a4238, side: THREE.DoubleSide });
-    place(deadGeo, deadMat, 90, { minS: 0.7, maxS: 1.5, maxSlope: 0.5, yOff: 1.3, tilt: 0.08 });
 
     A.scatterGroups = groups;
   };

@@ -10,15 +10,16 @@ J.World = (function () {
     regions: []
   };
 
+  /* 中国传统建筑色谱：粉墙、黛瓦、木色、青石 */
   var C = {
-    stone: 0x6e6b62, stoneD: 0x4a473f, stoneL: 0x8a8579,
-    dirt: 0x5e4f3a, wood: 0x4a3626, woodD: 0x2a1d14, woodL: 0x6d4e34,
-    wall: 0xbfb6a4, wallD: 0x8a8172,
-    tile: 0x2b3138, tileD: 0x1a1e23,
-    red: 0x8a2e26, redD: 0x5a1c16, gold: 0xc09850,
-    bamboo: 0x5c7830, bambooL: 0x6f8c3c, leaf: 0x486328,
-    rock: 0x77746a, rockD: 0x57544c, moss: 0x4a5a34,
-    grass: 0x5a6e3c, grass2: 0x4a5e30
+    stone: 0x939086, stoneD: 0x757268, stoneL: 0xb2afa4,   // 青石
+    dirt: 0x7a6647, wood: 0x77522f, woodD: 0x4a3220, woodL: 0x9a7046,  // 木构
+    wall: 0xdedbd0, wallD: 0xbcb8ab,                        // 粉墙
+    tile: 0x5a646e, tileD: 0x434c55,                        // 黛瓦（不再近黑）
+    red: 0xa8402f, redD: 0x76271d, gold: 0xd2a95e,          // 朱漆 / 铜金
+    bamboo: 0x67883c, bambooL: 0x82a24c, leaf: 0x54782f,
+    rock: 0x8f8c83, rockD: 0x6e6b63, moss: 0x627a45,
+    grass: 0x6a8449, grass2: 0x546d3a
   };
   var B, BT;   // B=主体（墙/木/石）  BT=瓦顶
   function rnd(a, b) { return a + Math.random() * (b - a); }

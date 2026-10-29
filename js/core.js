@@ -3,7 +3,7 @@
    渲染 / 天空 / 光照 / 几何合并 / 碰撞 / 输入
    ═══════════════════════════════════════════════ */
 var J = window.J = {
-  ver: 234,
+  ver: 236,
   clock: 0, dt: 0, timeScale: 1,
   world: null, hero: null, foes: [], fx: null, ui: null,
   paused: false,
@@ -85,11 +85,11 @@ r.setPixelRatio(Math.min(window.devicePixelRatio || 1, J.dprCap));
   r.shadowMap.needsUpdate = true;
   r.outputColorSpace = THREE.SRGBColorSpace;
   r.toneMapping = THREE.ACESFilmicToneMapping;
-  r.toneMappingExposure = 1.02;
+  r.toneMappingExposure = 1.05;
   J.R = r;
 
   var sc = new THREE.Scene();
-  sc.fog = new THREE.FogExp2(0xc8d6dc, 0.0026);
+  sc.fog = new THREE.FogExp2(0xb9cdd6, 0.0026);
   J.S = sc;
 
   var cam = new THREE.PerspectiveCamera(62, (J.Stage.W || window.innerWidth) / (J.Stage.H || window.innerHeight), 0.12, 560);
@@ -140,11 +140,11 @@ J.buildSky = function (topCol, midCol, botCol) {
 /* ── 光照：斜阳低角度，长影子，最有武侠味 ── */
 J.initLights = function () {
   /* 天空填充光：冷蓝的天光 + 暖褐的地面反射 */
-  var hemi = new THREE.HemisphereLight(0xa8bccc, 0x8a7860, 0.74);
+  var hemi = new THREE.HemisphereLight(0xa9c6dd, 0x6d7a5e, 0.72);
   J.S.add(hemi);
 
   /* 主光：低角度暖阳（傍晚），产生长阴影 */
-  var sun = new THREE.DirectionalLight(0xffc182, 2.55);
+  var sun = new THREE.DirectionalLight(0xffe2bd, 2.65);
   sun.position.set(88, 122, 118);
   sun.castShadow = true;
   sun.shadow.mapSize.set(768, 768);
@@ -163,7 +163,7 @@ J.initLights = function () {
   J.S.add(amb);
 
   /* 背光补光：从反方向打来的冷色，勾边 */
-  var fill = new THREE.DirectionalLight(0x88a8d8, 0.7);
+  var fill = new THREE.DirectionalLight(0x9dc0e2, 0.72);
   fill.position.set(-90, 40, -110);
   J.S.add(fill);
   J.fill = fill;

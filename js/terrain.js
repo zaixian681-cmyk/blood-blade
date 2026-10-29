@@ -173,11 +173,11 @@ J.Terrain = (function () {
     var col = new Float32Array(n * n * 3);
     var hs = new Float32Array(n * n);
 
-    var cGrass = new THREE.Color(0x4e6438);
-    var cGrass2 = new THREE.Color(0x3f5530);
-    var cRock = new THREE.Color(0x6f6c62);
-    var cRockH = new THREE.Color(0x848c94);
-    var cSand = new THREE.Color(0x8a7f66);
+    var cGrass = new THREE.Color(0x6f8a4e);      // 山野青草
+    var cGrass2 = new THREE.Color(0x55703c);     // 深一层的草坡
+    var cRock = new THREE.Color(0x8d8a80);       // 青灰岩
+    var cRockH = new THREE.Color(0xa2adb4);      // 高处冷灰
+    var cSand = new THREE.Color(0x9c9179);       // 河滩卵石
     var tmp = new THREE.Color();
 
     for (var iz = 0; iz < n; iz++) {
@@ -207,7 +207,7 @@ J.Terrain = (function () {
 
         if (dRiver < 12 && h0 < 12) tmp.lerp(cSand, ss(12, 4, dRiver) * 0.7);
         tmp.lerp(cRock, sl * 0.7);
-        if (h0 > 45) tmp.lerp(new THREE.Color(0x78898f), ss(45, 95, h0) * 0.45);
+        if (h0 > 45) tmp.lerp(new THREE.Color(0x8fa0a8), ss(45, 95, h0) * 0.42);
 
         var nz = (vn(ix2 * 0.8, iz2 * 0.8) - 0.5) * 0.09;
         var k2 = i0 * 3;
