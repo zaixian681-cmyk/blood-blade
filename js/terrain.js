@@ -5,7 +5,7 @@
 J.Terrain = (function () {
 
   var SIZE = 480;
-  var SEG = 120;
+  var SEG = 104;
   var HALF = SIZE / 2;
 
   function h2(x, y) { var n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); }

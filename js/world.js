@@ -20,7 +20,7 @@ J.World = (function () {
     rock: 0x77746a, rockD: 0x57544c, moss: 0x4a5a34,
     grass: 0x5a6e3c, grass2: 0x4a5e30
   };
-  var B;
+  var B, BT;   // B=主体（墙/木/石）  BT=瓦顶
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function hAt(x, z) { return J.Terrain.heightAt(x, z); }
 
@@ -96,7 +96,7 @@ J.World = (function () {
     for (var s = -1; s <= 1; s += 2) {
       var ox = Math.sin(ry) * s * halfD / 2, oz = Math.cos(ry) * s * halfD / 2;
       /* 底板（防止透光） */
-      B.box(x + ox, yb + h / 2 - 0.06, z + oz, pw, 0.12, slope, col, { rx: s * ang, ry: ry });
+      BT.box(x + ox, yb + h / 2 - 0.06, z + oz, pw, 0.12, slope, col, { rx: s * ang, ry: ry });
 
       /* 瓦片阵列：沿坡面分 5 排，每排横向分若干列 */
       var rows = 5;
@@ -113,7 +113,7 @@ J.World = (function () {
           var wz = z + oz - Math.sin(ry) * tx;
           var wy = yb + h / 2 + ly;
           /* 每片瓦：微微起翘的薄片 */
-          B.box(wx + Math.sin(ry) * lz * 0, wy, wz + Math.cos(ry) * lz,
+          BT.box(wx + Math.sin(ry) * lz * 0, wy, wz + Math.cos(ry) * lz,
             pw / cols * 0.94, 0.10, slope / rows * 1.12,
             (r % 2 === 0) ? col : ridgeCol,
             { rx: s * ang, ry: ry, tint: 0.88 + ((r * 7 + c * 3) % 5) * 0.035 });
@@ -122,10 +122,10 @@ J.World = (function () {
     }
 
     /* 屋脊压顶 */
-    B.box(x, yb + h + 0.12, z, pw + 0.24, 0.26, 0.46, ridgeCol, { ry: ry });
+    BT.box(x, yb + h + 0.12, z, pw + 0.24, 0.26, 0.46, ridgeCol, { ry: ry });
     /* 翘角 */
     for (var e = -1; e <= 1; e += 2) {
-      B.box(x + Math.cos(ry) * e * pw / 2, yb + h + 0.30, z - Math.sin(ry) * e * pw / 2,
+      BT.box(x + Math.cos(ry) * e * pw / 2, yb + h + 0.30, z - Math.sin(ry) * e * pw / 2,
         0.72, 0.18, 0.54, ridgeCol, { ry: ry, rz: e * 0.28 });
     }
   }
@@ -133,7 +133,17 @@ J.World = (function () {
   function house(cx, cz, w, d, h, opt) {
     opt = opt || {};
     var y0 = hAt(cx, cz);
-    B.box(cx, y0 - 1.2, cz, w + 0.8, 3.0, d + 0.8, C.stoneD);
+    /* 采样四角与中心，取最低点，基座一直落到最低点以下 */
+    var minH = y0;
+    var probes = [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2],
+    [0, 0], [-w / 2, 0], [w / 2, 0], [0, -d / 2], [0, d / 2]];
+    for (var pi = 0; pi < probes.length; pi++) {
+      var hh = hAt(cx + probes[pi][0], cz + probes[pi][1]);
+      if (hh < minH) minH = hh;
+    }
+    var baseBottom = minH - 1.2;
+    var baseTop = y0 + 0.35;
+    B.box(cx, (baseBottom + baseTop) / 2, cz, w + 0.9, baseTop - baseBottom, d + 0.9, C.stoneD);
     B.boxB(cx, y0, cz, w, h, d, opt.wall || C.wall);
     for (var sx = -1; sx <= 1; sx += 2)
       for (var sz = -1; sz <= 1; sz += 2)
@@ -154,6 +164,8 @@ J.World = (function () {
 
   function lamp(x, z) {
     var y0 = hAt(x, z);
+    /* 底部下沉，避免坡地悬空 */
+    B.box(x, y0 - 0.9, z, 0.62, 1.9, 0.62, C.stoneD);
     B.box(x, y0 + 0.1, z, 0.5, 0.2, 0.5, C.stoneD);
     B.cyl(x, y0 + 0.2, z, 0.09, 1.6, 6, C.stone);
     B.box(x, y0 + 1.9, z, 0.38, 0.32, 0.38, C.stoneL);
@@ -279,7 +291,7 @@ J.World = (function () {
     }
 
     /* 2) 路边碎石：小、密、贴地 */
-    for (var k = 0; k < 900; k++) {
+    for (var k = 0; k < 520; k++) {
       var z = rnd(-210, 190);
       var px = J.Terrain.pathX(z);
       var sd = Math.random() > 0.5 ? 1 : -1;
@@ -292,7 +304,7 @@ J.World = (function () {
     }
 
     /* 3) 草丛：只在高草区，密度低、叶片细 */
-    for (var g = 0; g < 260; g++) {
+    for (var g = 0; g < 150; g++) {
       var z2 = rnd(-200, 180);
       var side = Math.random() > 0.5 ? 1 : -1;
       var x2 = J.Terrain.pathX(z2) + side * rnd(13, 58);
@@ -549,6 +561,7 @@ J.World = (function () {
   W.build = function () {
     J.Col.reset();
     B = new J.MB();
+    BT = new J.MB();
 
     /* 地形 */
     J.Terrain.build();
@@ -627,6 +640,28 @@ J.World = (function () {
     }
 
     /* 合并静态几何 */
+    /* ── 瓦顶材质：程序化瓦楞贴图 ── */
+    var tc = document.createElement('canvas'); tc.width = 192; tc.height = 192;
+    var tg = tc.getContext('2d');
+    tg.fillStyle = '#3a4048'; tg.fillRect(0, 0, 192, 192);
+    for (var ty = 0; ty < 192; ty += 16) {
+      var grd = tg.createLinearGradient(0, ty, 0, ty + 16);
+      grd.addColorStop(0, 'rgba(255,255,255,0.16)');
+      grd.addColorStop(0.45, 'rgba(255,255,255,0.03)');
+      grd.addColorStop(1, 'rgba(0,0,0,0.28)');
+      tg.fillStyle = grd; tg.fillRect(0, ty, 192, 16);
+      tg.strokeStyle = 'rgba(0,0,0,0.22)'; tg.lineWidth = 1.4;
+      tg.beginPath(); tg.moveTo(0, ty + 0.5); tg.lineTo(192, ty + 0.5); tg.stroke();
+    }
+    for (var tx = 0; tx < 192; tx += 24) {
+      tg.strokeStyle = 'rgba(0,0,0,0.16)'; tg.lineWidth = 1;
+      tg.beginPath(); tg.moveTo(tx + 0.5, 0); tg.lineTo(tx + 0.5, 192); tg.stroke();
+    }
+    var ttex = new THREE.CanvasTexture(tc);
+    ttex.wrapS = ttex.wrapT = THREE.RepeatWrapping;
+    ttex.repeat.set(0.55, 0.55);
+    ttex.colorSpace = THREE.SRGBColorSpace;
+
     /* 建筑表面噪声：避免大色块 */
     var bc = document.createElement('canvas'); bc.width = bc.height = 256;
     var bg = bc.getContext('2d');
@@ -674,7 +709,18 @@ J.World = (function () {
     mesh.name = 'mapMesh';
     J.S.add(mesh);
     W.mesh = mesh;
-    W.triCount = B.i.length / 3;
+
+    /* 瓦顶单独成 mesh，用瓦楞材质 */
+    var tileMat = new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.86, metalness: 0.04,
+      map: ttex, normalMap: bnorm, normalScale: new THREE.Vector2(1.1, 1.1)
+    });
+    var tileMesh = BT.build(tileMat);
+    tileMesh.name = 'roofMesh';
+    J.S.add(tileMesh);
+    W.roofMesh = tileMesh;
+
+    W.triCount = B.i.length / 3 + BT.i.length / 3;
     W.colliderCount = J.Col.list.length;
 
     /* 尘粒 */
