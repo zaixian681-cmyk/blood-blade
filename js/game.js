@@ -2,6 +2,11 @@
    game.js — 玩家 / 战斗 / 相机 / 主循环
    ═══════════════════════════════════════════════ */
 
+/* ── 复用向量，避免每帧 new 造成 GC 卡顿 ── */
+var _V1 = new THREE.Vector3(), _V2 = new THREE.Vector3();
+var _V3 = new THREE.Vector3(), _V4 = new THREE.Vector3();
+var _V5 = new THREE.Vector3(), _V6 = new THREE.Vector3();
+
 J.boot = function () {
   var bootEl = document.getElementById('boot');
   try {
@@ -31,6 +36,12 @@ J.boot = function () {
 J.initPlayer = function () {
   var H = J.buildHero();
   J.S.add(H.root);
+  /* 合并静态部件，降低 draw call */
+  var meshBefore = 0;
+  H.root.traverse(function (o) { if (o.isMesh) meshBefore++; });
+  var meshAfter = J.optimizeHeroModel ? J.optimizeHeroModel(H.root) : meshBefore;
+  H._meshBefore = meshBefore;
+  H._meshAfter = meshAfter;
 
   var wp = J.Weapon.create();
   H.weaponHolder.add(wp.root);
@@ -151,15 +162,14 @@ J.updateSlash = function (dt) {
     }
     if (show) {
       w.updateWorldMatrix(true, false);
-      var tip = new THREE.Vector3(0.50, 1.28, 0).applyMatrix4(w.matrixWorld);
-      var base = new THREE.Vector3(0.22, 0.86, 0).applyMatrix4(w.matrixWorld);
-      /* 外晕：沿刀刃方向两端各外扩，形成更宽更淡的第二层 */
-      var dirv = tip.clone().sub(base);
-      var dl = dirv.length() || 1;
-      dirv.multiplyScalar(1 / dl);
-      var baseO = base.clone().addScaledVector(dirv, -0.22);
-      var tipO = tip.clone().addScaledVector(dirv, 0.26);
-      J.Slash.push(base, tip, baseO, tipO);
+      _V1.set(0.50, 1.28, 0).applyMatrix4(w.matrixWorld);     // tip
+      _V2.set(0.22, 0.86, 0).applyMatrix4(w.matrixWorld);     // base
+      _V3.copy(_V1).sub(_V2);                                  // 刀刃方向
+      var dl = _V3.length() || 1;
+      _V3.multiplyScalar(1 / dl);
+      _V4.copy(_V2).addScaledVector(_V3, -0.22);               // 外晕 base
+      _V5.copy(_V1).addScaledVector(_V3, 0.26);                // 外晕 tip
+      J.Slash.push(_V2, _V1, _V4, _V5);
     }
   }
   J.Slash.update(dt, J.clock);
@@ -684,8 +694,8 @@ J.animatePlayer = function (dt, t) {
 
   } else if (st === 'exec') {
     var et2 = P.execT || 0;
-    if (et2 < 0.16) {
-      var k1 = et2 / 0.16;
+    if (et2 < 0.12) {
+      var k1 = et2 / 0.12;
       var e1 = E.outQ(k1);
       tgt.arX = -0.45 - 2.35 * e1;
       tgt.arZ = -0.15 - 0.22 * e1;
@@ -697,8 +707,8 @@ J.animatePlayer = function (dt, t) {
       tgt.hipsY = 0.86 - 0.10 * e1;
       tgt.kneeL = 0.34 * e1; tgt.kneeR = 0.38 * e1;
       tgt.wpnRotX = 0.55 + 1.25 * e1;
-    } else if (et2 < 0.29) {
-      var k2 = (et2 - 0.16) / 0.13;
+    } else if (et2 < 0.21) {
+      var k2 = (et2 - 0.12) / 0.09;
       var e2 = E.outExpo(k2);
       tgt.arX = -2.80 + 3.90 * e2;
       tgt.arZ = -0.37 + 0.55 * e2;
@@ -712,7 +722,7 @@ J.animatePlayer = function (dt, t) {
       tgt.kneeL = 0.34 + 0.34 * e2; tgt.kneeR = 0.38 + 0.30 * e2;
       tgt.wpnRotX = 1.80 - 1.95 * e2;
     } else {
-      var k3 = Math.min(1, (et2 - 0.29) / 0.34);
+      var k3 = Math.min(1, (et2 - 0.21) / 0.28);
       var e3 = E.inOut(k3);
       tgt.arX = J.U.lerp(1.10, -0.18, e3);
       tgt.arZ = J.U.lerp(0.18, -0.12, e3);
@@ -927,7 +937,7 @@ J.updateCamera = function (dt) {
   /* ── 处决特写镜头 ── */
   if (P.state === 'exec' && P.execTarget) {
     var f = P.execTarget, et = P.execT;
-    var push = Math.min(1, et / 0.13);
+    var push = Math.min(1, et / 0.10);
     var ang = P.execFace + 1.52;                 // 侧后方 87°
     var dist = 3.0 - push * 0.75;
     var tx = f.pos.x + Math.sin(ang) * dist;
@@ -962,7 +972,7 @@ J.updateCamera = function (dt) {
   var dist = P.camDist;
   if (P.state === 'atk') dist -= 0.22;      // 出刀时镜头微推，增强冲击
   if (P.state === 'charge') dist += 0.35;   // 蓄力时拉开一点看全身
-  var focus = new THREE.Vector3(P.pos.x, P.pos.y + 1.10, P.pos.z);
+  var focus = _V6.set(P.pos.x, P.pos.y + 1.10, P.pos.z);
   // 越肩：视角焦点向右偏，人物落在画面左三分之一
   var rx = Math.cos(P.camYaw), rz = -Math.sin(P.camYaw);
   focus.x += rx * 0.40; focus.z += rz * 0.40;
@@ -978,7 +988,7 @@ J.updateCamera = function (dt) {
   var hitD = J.Col.rayDist(focus.x, focus.y, focus.z, dirx, diry, dirz, dist + 0.4);
   if (hitD < dist) dist = Math.max(0.9, hitD - 0.25);
 
-  var camPos = new THREE.Vector3(
+  var camPos = _V1.set(
     focus.x + dirx * dist,
     focus.y + diry * dist,
     focus.z + dirz * dist

@@ -4,7 +4,7 @@
    ═══════════════════════════════════════════════ */
 J.Slash = (function () {
 
-  var N = 30;          // 轨迹采样帧数
+  var N = 20;          // 轨迹采样帧数
   var instances = [];
 
   var vertShader = [

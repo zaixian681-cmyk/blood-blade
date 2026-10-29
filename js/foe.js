@@ -501,10 +501,15 @@
       /* 动画 */
       this.anim(dt, t, spd, distToP);
 
-      /* 距离剔除：超过 58 米不渲染（省 draw call） */
+      /* 距离剔除：超过 46 米不渲染；34 米外不投阴影 */
       var distToCam = J.C ? Math.hypot(this.pos.x - J.C.position.x, this.pos.z - J.C.position.z) : 0;
-      if (distToCam > 58) { if (M.root.visible) M.root.visible = false; return; }
+      if (distToCam > 46) { if (M.root.visible) M.root.visible = false; return; }
       if (!M.root.visible) M.root.visible = true;
+      var castOn = distToCam < 34;
+      if (this._castOn !== castOn) {
+        this._castOn = castOn;
+        M.root.traverse(function (o) { if (o.isMesh) o.castShadow = castOn; });
+      }
 
       M.root.position.set(this.pos.x, this.pos.y, this.pos.z);
       M.spin.rotation.y = this.yaw;
@@ -628,22 +633,17 @@
       J.foes.push(f);
       return f;
     }
-    // 山路伏击（玩家下山路上）
+    // 山路伏击
     add('bandit', -74, -18, 0.8);
     add('bandit', -62, 6, -0.4);
     // 谷底城镇
     add('bandit', -22, -30, 0.5);
     add('bandit', 24, -48, -0.6);
-    add('bandit', -26, 10, 2.2);
     add('bandit', 28, 22, 1.0);
-    add('bandit', -20, 56, -1.4);
     // 护院守客栈
     add('guard', 20, -62, -0.4);
-    add('guard', -28, -70, 0.6);
-    // 飞镖手（竹林/高处）
+    // 飞镖手
     add('thrower', -56, 40, 0.8);
-    add('thrower', 58, -20, -0.9);
-    add('thrower', -64, -60, 0.3);
     // Boss 守在河湾高地
     var boss = add('boss', 0, 96, Math.PI);
     boss.home.set(0, 96);

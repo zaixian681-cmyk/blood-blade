@@ -6,7 +6,7 @@
 J.Terrain = (function () {
 
   var SIZE = 620;          // 世界边长
-  var SEG = 156;           // 网格分段（每格约 4m）
+  var SEG = 118;           // 网格分段（每格约 5m）
   var HALF = SIZE / 2;
 
   /* ── 伪随机与噪声 ── */

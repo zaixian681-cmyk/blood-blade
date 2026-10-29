@@ -513,5 +513,66 @@ J.Hero = (function () {
     return H;
   };
 
+  /* ═══ 模型合并优化 ═══
+     同一父节点下、同材质的静态 mesh 合并成一个，大幅降低 draw call */
+  function mergeMeshList(list) {
+    var pos = [], nor = [], uv = [];
+    for (var i = 0; i < list.length; i++) {
+      var m = list[i];
+      var geo = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+      m.updateMatrix();
+      geo.applyMatrix4(m.matrix);
+      var p = geo.attributes.position;
+      var n = geo.attributes.normal;
+      var u = geo.attributes.uv;
+      for (var a = 0; a < p.array.length; a++) pos.push(p.array[a]);
+      if (n) for (var b = 0; b < n.array.length; b++) nor.push(n.array[b]);
+      if (u) for (var c = 0; c < u.array.length; c++) uv.push(u.array[c]);
+      else for (var c2 = 0; c2 < p.count * 2; c2++) uv.push(0);
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    if (nor.length) g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    if (!nor.length) g.computeVertexNormals();
+    return g;
+  }
+
+  function optimizeNode(node) {
+    /* 先把子分组各自优化 */
+    var kids = node.children.slice();
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].isGroup || (kids[i].children && kids[i].children.length)) optimizeNode(kids[i]);
+    }
+    /* 收集直接子 mesh，按材质分组 */
+    var byMat = {}, meshes = [];
+    for (var j = 0; j < node.children.length; j++) {
+      var c = node.children[j];
+      if (!c.isMesh || !c.material) continue;
+      if (c.userData && c.userData.noMerge) continue;
+      var key = c.material.uuid;
+      if (!byMat[key]) byMat[key] = { mat: c.material, list: [] };
+      byMat[key].list.push(c);
+      meshes.push(c);
+    }
+    for (var k in byMat) {
+      var grp = byMat[k];
+      if (grp.list.length < 2) continue;
+      var geo = mergeMeshList(grp.list);
+      var nm = new THREE.Mesh(geo, grp.mat);
+      nm.castShadow = true;
+      nm.receiveShadow = true;
+      node.add(nm);
+      for (var r = 0; r < grp.list.length; r++) node.remove(grp.list[r]);
+    }
+  }
+
+  J.optimizeHeroModel = function (root) {
+    optimizeNode(root);
+    var cnt = 0;
+    root.traverse(function (o) { if (o.isMesh) cnt++; });
+    return cnt;
+  };
+
   return { build: J.buildHero };
 })();

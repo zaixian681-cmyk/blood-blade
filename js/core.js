@@ -143,8 +143,8 @@ J.initLights = function () {
   var sun = new THREE.DirectionalLight(0xffc48a, 2.15);
   sun.position.set(130, 52, -150);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
-  var s = 92;
+  sun.shadow.mapSize.set(768, 768);
+  var s = 46;
   sun.shadow.camera.left = -s; sun.shadow.camera.right = s;
   sun.shadow.camera.top = s; sun.shadow.camera.bottom = -s;
   sun.shadow.camera.near = 20; sun.shadow.camera.far = 400;
