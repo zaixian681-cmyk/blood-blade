@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#12100e">
+<title>江湖 · 一刀</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#0b0a09;font-family:"Songti SC","STSong","Noto Serif CJK SC",serif;color:#e8e0d0}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+/* ── 统一 HUD ── */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+.hide{opacity:0!important;pointer-events:none!important}
+#hud>*{transition:opacity .25s}
+
+/* 左上 状态 */
+#status{position:absolute;left:16px;top:calc(14px + env(safe-area-inset-top));width:150px}
+.bar{position:relative;height:9px;border-radius:5px;background:rgba(0,0,0,.55);
+  box-shadow:inset 0 0 0 1px rgba(212,175,110,.35);overflow:hidden;margin-bottom:6px}
+.bar>i{position:absolute;inset:0;width:100%;transform-origin:left center;border-radius:5px;transition:width .12s linear}
+#hpF{background:linear-gradient(90deg,#8e1f1f,#d94242 70%,#ef6a5a);box-shadow:0 0 10px rgba(217,66,66,.5)}
+#spF{background:linear-gradient(90deg,#2d5a6b,#5fa8bd 70%,#8fd0de);box-shadow:0 0 8px rgba(95,168,189,.45);height:6px}
+.bar.sp{height:6px}
+.bartxt{position:absolute;inset:0;font-size:9px;line-height:9px;text-align:right;padding-right:6px;
+  color:rgba(255,255,255,.75);letter-spacing:.5px;font-family:ui-monospace,monospace}
+
+/* 顶部 敌人血条 */
+#target{position:absolute;left:50%;top:calc(18px + env(safe-area-inset-top));transform:translateX(-50%);
+  width:min(58%,300px);opacity:0;transition:opacity .22s}
+#target.on{opacity:1}
+#tgtName{font-size:12px;letter-spacing:3px;text-align:center;color:#e6c98a;margin-bottom:5px;
+  text-shadow:0 0 8px rgba(0,0,0,.9),0 1px 2px #000}
+#tgtBar{height:7px;border-radius:4px;background:rgba(0,0,0,.6);
+  box-shadow:inset 0 0 0 1px rgba(200,160,100,.4);overflow:hidden;position:relative}
+#tgtFill{position:absolute;inset:0;width:100%;transform-origin:left;border-radius:4px;
+  background:linear-gradient(90deg,#7a1414,#c73a2e 65%,#e2624a);transition:width .18s ease-out}
+
+/* 连击数 */
+#combo{position:absolute;right:22px;top:34%;text-align:right;opacity:0;transition:opacity .25s}
+#combo.on{opacity:1}
+#comboBox{font-size:52px;line-height:.95;font-weight:700;color:#ffdf9e;
+  text-shadow:0 0 18px rgba(255,160,60,.75),0 2px 6px rgba(0,0,0,.9);font-style:italic}
+#comboTag{font-size:12px;letter-spacing:5px;color:#e8b96a;margin-top:2px;text-shadow:0 1px 3px #000}
+
+/* 中央提示 */
+#toast{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);text-align:center;
+  font-size:20px;letter-spacing:6px;color:#f0dcb0;opacity:0;transition:opacity .4s;
+  text-shadow:0 0 20px rgba(0,0,0,.95),0 0 40px rgba(220,160,60,.4)}
+#toast.on{opacity:1}
+
+/* 底部左：摇杆 */
+#joy{position:absolute;left:0;bottom:0;width:44%;height:230px;pointer-events:auto}
+#joyBase{position:absolute;left:74px;bottom:calc(78px + env(safe-area-inset-bottom));width:108px;height:108px;
+  border-radius:50%;background:radial-gradient(circle,rgba(255,240,210,.09),rgba(255,240,210,.03) 70%,transparent);
+  box-shadow:inset 0 0 0 1.5px rgba(230,200,150,.28);transform:translate(-50%,50%)}
+#joyKnob{position:absolute;left:0;top:0;width:46px;height:46px;border-radius:50%;
+  background:radial-gradient(circle at 35% 32%,rgba(255,246,225,.85),rgba(210,175,120,.55));
+  box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 16px rgba(240,205,140,.35);transform:translate(-50%,-50%)}
+
+/* 底部右：战斗按钮 */
+#acts{position:absolute;right:0;bottom:0;width:56%;height:260px;pointer-events:auto}
+.btn{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:15px;letter-spacing:1px;color:#f3e5c8;
+  background:radial-gradient(circle at 38% 32%,rgba(90,74,54,.78),rgba(38,30,22,.72));
+  box-shadow:inset 0 0 0 1.5px rgba(215,180,120,.42),0 4px 14px rgba(0,0,0,.45);
+  transition:transform .07s,box-shadow .12s}
+.btn:active{transform:scale(.92);box-shadow:inset 0 0 0 2px rgba(255,220,150,.75),0 0 20px rgba(240,190,110,.5)}
+#bAtk{right:calc(24px + env(safe-area-inset-right));bottom:calc(84px + env(safe-area-inset-bottom));width:88px;height:88px;font-size:19px}
+#bHeavy{right:calc(120px + env(safe-area-inset-right));bottom:calc(126px + env(safe-area-inset-bottom));width:64px;height:64px;font-size:14px}
+#bDash{right:calc(30px + env(safe-area-inset-right));bottom:calc(190px + env(safe-area-inset-bottom));width:62px;height:62px;font-size:14px}
+#bLock{right:calc(124px + env(safe-area-inset-right));bottom:calc(48px + env(safe-area-inset-bottom));width:52px;height:52px;font-size:13px}
+#bGuard{right:calc(168px + env(safe-area-inset-right));bottom:calc(96px + env(safe-area-inset-bottom));width:58px;height:58px;font-size:14px}
+
+/* 加载 */
+#boot{position:fixed;inset:0;background:#0b0a09;z-index:50;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;transition:opacity .6s}
+#bootT{font-size:26px;letter-spacing:12px;color:#e2c894;text-indent:12px}
+#bootS{font-size:12px;letter-spacing:4px;color:#7a6f5e}
+#boot.gone{opacity:0;pointer-events:none}
+
+/* 伤害飘字 */
+.dmg{position:absolute;transform:translate(-50%,-50%);font-size:22px;font-weight:700;color:#ffe8b0;
+  text-shadow:0 0 10px rgba(255,140,40,.9),0 2px 4px #000;pointer-events:none;
+  animation:dmgUp .72s ease-out forwards;letter-spacing:1px;font-family:ui-serif,serif}
+.dmg.heavy{font-size:31px;color:#ffb060;text-shadow:0 0 16px rgba(255,90,30,1),0 2px 6px #000}
+.dmg.crit{font-size:34px;color:#ff8a5a;text-shadow:0 0 22px rgba(255,60,20,1),0 0 40px rgba(255,120,40,.7),0 2px 6px #000}
+.dmg.block{font-size:17px;color:#bcd0e8;text-shadow:0 0 10px rgba(140,180,255,.8)}
+@keyframes dmgUp{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}
+ 18%{opacity:1;transform:translate(-50%,-88%) scale(1.14)}
+ 100%{opacity:0;transform:translate(-50%,-190%) scale(.94)}}
+
+/* 调试错误条 */
+#err{position:fixed;left:0;right:0;top:0;z-index:99;background:rgba(140,20,20,.94);color:#fff;
+  font:11px/1.5 ui-monospace,monospace;padding:6px 10px;display:none;white-space:pre-wrap;max-height:40%;overflow:auto}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div id="hud">
+  <div id="status">
+    <div class="bar"><i id="hpF"></i><span class="bartxt" id="hpT"></span></div>
+    <div class="bar sp"><i id="spF"></i></div>
+  </div>
+
+  <div id="target"><div id="tgtName"></div><div id="tgtBar"><i id="tgtFill"></i></div></div>
+
+  <div id="combo"><div id="comboBox">0</div><div id="comboTag">连击</div></div>
+  <div id="toast"></div>
+
+  <div id="joy"><div id="joyBase"></div><div id="joyKnob"></div></div>
+  <div id="acts">
+    <div class="btn" id="bAtk">斩</div>
+    <div class="btn" id="bHeavy">重</div>
+    <div class="btn" id="bDash">闪</div>
+    <div class="btn" id="bGuard">挡</div>
+    <div class="btn" id="bLock">锁</div>
+  </div>
+</div>
+
+<div id="boot"><div id="bootT">江 湖</div><div id="bootS">正在点灯</div></div>
+<div id="err"></div>
+
+<script src="js/three.min.js"></script>
+<script src="js/core.js?v=9"></script>
+<script src="js/world.js?v=9"></script>
+<script src="js/fx.js?v=9"></script>
+<script src="js/weapon.js?v=9"></script>
+<script src="js/hero.js?v=9"></script>
+<script src="js/foe.js?v=9"></script>
+<script src="js/ui.js?v=9"></script>
+<script src="js/game.js?v=9"></script>
+</body>
+</html>
