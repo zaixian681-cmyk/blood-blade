@@ -49,6 +49,7 @@ J.Interact = (function () {
         label: opt.label || '打开木箱',
         tag: 'chest',
         mesh: g, lid: lid,
+        once: opt.once === undefined ? false : opt.once,
         onUse: function (it) {
           /* 开盖动画 */
           lid.rotation.x = -1.1;
@@ -60,6 +61,8 @@ J.Interact = (function () {
             J.UI.toast(opt.reward, 2.0);
             if (J.Obj) J.Obj.onLoot(it.id, opt.reward);
           }
+          /* 任务回调：之前这里漏掉了，导致「取得账册」永远无法推进剧情 */
+          if (opt.onUse) opt.onUse(it);
         }
       });
       /* 宝箱朝向 */

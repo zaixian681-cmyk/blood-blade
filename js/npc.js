@@ -187,10 +187,13 @@ J.NPC = (function () {
       }
       if (d < npc.r && d < bd) { bd = d; best = npc; }
     }
-    /* 山与晨参战后：她本人就是对话对象 */
+    /* 山与晨参战后：她本人也是对话对象，但不能抢掉别的 NPC 的对话 */
     if (J.Ally && J.Ally.active && !J.Ally.down) {
       var dA = Math.hypot(P.pos.x - J.Ally.pos.x, P.pos.z - J.Ally.pos.z);
-      if (dA < 3.2 && dA < bd) {
+      var qNow = (J.Story && J.Story.currentQuest) ? J.Story.currentQuest() : null;
+      var wantShen = !!(qNow && qNow.type === 'talk' && qNow.npc === 'shen');
+      var blockOther = !!(qNow && qNow.type === 'talk' && qNow.npc !== 'shen');
+      if (!blockOther && dA < 3.2 && (wantShen || (!best && dA < 2.4))) {
         bd = dA;
         best = { key: 'shen', name: '山与晨', pos: J.Ally.pos, ally: true };
       }
@@ -206,15 +209,35 @@ J.NPC = (function () {
     }
   };
 
+  /* 先播一小段过场，再开对话；若过场被跳过/异常，用定时器兜底 */
+  function mentorTalk(npc, dlgId, line) {
+    var done = false;
+    function open() {
+      if (done) return;
+      done = true;
+      J.Story.talk('gu', dlgId);
+    }
+    if (J.Cine && J.Cine.mentor) {
+      J.Cine.mentor(npc, [{ t: 0.15, who: '顾长风', text: line, dur: 1.5 }], open);
+      setTimeout(open, 6200);
+    } else {
+      open();
+    }
+  }
+
   /* ── 触发对话 ── */
   N.talk = function () {
     var npc = N.near;
     if (!npc) return false;
     var q = J.Story.currentQuest();
-    if (!q) { J.UI.toast(npc.name + '：江湖路远，各自珍重。', 1.8); return true; }
+    /* 主线结束后没有 active 任务，但顾长风还有尾声，不能直接打发走 */
+    if (!q && npc.key !== 'gu') {
+      J.UI.toast(npc.name + '：江湖路远，各自珍重。', 1.8);
+      return true;
+    }
 
     /* 按任务决定对话 */
-    if (q.type === 'talk' && q.npc === npc.key) {
+    if (q && q.type === 'talk' && q.npc === npc.key) {
       var dlgId = null;
       if (npc.key === 'shen') {
         if (q.id === 'c1_1') dlgId = 'shen_meet';
@@ -228,8 +251,6 @@ J.NPC = (function () {
       }
       if (dlgId) {
         J.Story.talk(npc.key, dlgId);
-        /* 纯打探型对话直接完成 */
-        if (q.id === 'c4_1') J.Story.advance('c4_1');
         return true;
       }
     }
@@ -246,22 +267,19 @@ J.NPC = (function () {
 
       /* 支线 3：战后回崖顶 */
       if (St.ended && !St.hasFlag('epilogueSeen')) {
-        J.Cine.mentor(npc, [{ t: 0.2, who: '顾长风', text: '回来了。', dur: 1.4 }],
-          function () { St.talk('gu', 'gu_epilogue'); });
+        mentorTalk(npc, 'gu_epilogue', '回来了。');
         return true;
       }
 
       /* 支线 2：天绝峰前授刀道 */
       if (!St.hasFlag('guTeachDaodao') && St.quest.c5_3 === 'done' && St.hasFlag('guTeachDaoyi')) {
-        J.Cine.mentor(npc, [{ t: 0.2, who: '顾长风', text: '我等这一天，等了二十年。', dur: 2.0 }],
-          function () { St.talk('gu', 'gu_teach2'); });
+        mentorTalk(npc, 'gu_teach2', '我等这一天，等了二十年。');
         return true;
       }
 
       /* 支线 1：授刀意 */
       if (!St.hasFlag('guTeachDaoyi') && (St.bladeStage >= 2 || St.quest.c2_2 === 'done')) {
-        J.Cine.mentor(npc, [{ t: 0.2, who: '顾长风', text: '坐。', dur: 1.4 }],
-          function () { St.talk('gu', 'gu_teach'); });
+        mentorTalk(npc, 'gu_teach', '坐。');
         return true;
       }
 

@@ -893,6 +893,7 @@ J.World = (function () {
     J.S.add(tileMesh);
     W.roofMesh = tileMesh;
 
+
     W.triCount = B.i.length / 3 + BT.i.length / 3;
     W.colliderCount = J.Col.list.length;
 

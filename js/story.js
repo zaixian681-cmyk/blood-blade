@@ -67,7 +67,7 @@ J.Story = (function () {
         '山与晨：（沉默片刻）这句话，我在皇室旧档里见过。',
         '山与晨：走吧。谷底渡口有船，我们去查那座古寺。'
       ],
-      onEnd: function () { S.advance('c2_1'); }
+      onEnd: function () { S.advance('c1_2'); }
     },
 
     /* ══ 第二章 · 断魂吊桥 ══ */
@@ -91,7 +91,7 @@ J.Story = (function () {
         '山与晨：谷底那座废弃古寺，是他们运东西的落脚点。',
         '山与晨：我们先去那儿。'
       ],
-      onEnd: function () { S.advance('c3_1'); }
+      onEnd: function () { S.advance('c2_2'); }
     },
 
     /* ══ 第三章 · 古寺藏锋 ══ */
@@ -132,7 +132,7 @@ J.Story = (function () {
         '现与在：我知道。',
         '山与晨：外面来人了。走！'
       ],
-      onEnd: function () { S.setFlag('knowsFatherFull'); S.advance('c4_1'); }
+      onEnd: function () { S.setFlag('knowsFatherFull'); S.advance('c3_4'); }
     },
 
     /* ══ 第四章 · 皇城风云 ══ */
@@ -145,7 +145,7 @@ J.Story = (function () {
         '乡民：（压低声音）他们在城门贴了告示，说现与在杀了皇室、勾结魔教。',
         '乡民：这年头，说真话的人反倒成了反贼。'
       ],
-      onEnd: function () { S.setFlag('wanted'); S.advance('c4_2'); }
+      onEnd: function () { S.setFlag('wanted'); S.advance('c4_1'); }
     },
     shen_c4: {
       who: 'shen',
@@ -159,7 +159,7 @@ J.Story = (function () {
         '山与晨：路线、换岗、牢门钥匙在谁身上 —— 我全记下来了。',
         '山与晨：这一趟，不是你救我。是我们一起把这件事了结。'
       ],
-      onEnd: function () { S.advance('c5_1'); }
+      onEnd: function () { S.advance('c4_3'); }
     },
 
     /* ══ 第五章 · 血衣围城 ══ */
@@ -174,7 +174,7 @@ J.Story = (function () {
         '山与晨：四大护法在东面和北面，中间空出来，是因为萧无极想让你走那条路。',
         '山与晨：他等的是你，不是救我。'
       ],
-      onEnd: function () { S.advance('c5_2'); }
+      onEnd: function () { }
     },
     shen_freed: {
       who: 'shen',
@@ -187,7 +187,7 @@ J.Story = (function () {
         '山与晨：现与在，我也有刀。',
         '山与晨：走吧。这一次，一起。'
       ],
-      onEnd: function () { S.setFlag('shenFreed'); S.advance('c6_1'); }
+      onEnd: function () { S.setFlag('shenFreed'); }
     },
 
 
@@ -218,6 +218,12 @@ J.Story = (function () {
         J.FX.ring(J.P.pos.x, J.P.pos.y + 0.8, J.P.pos.z, 0xa8c8ff, 6.0);
         J.FX.spark(J.P.pos.x, J.P.pos.y + 1.2, J.P.pos.z, 40, 0xcfe0ff, 2.4);
         J.FX.shake(0.16, 0.4);
+        /* 若已经救出山与晨，顾长风直接去天绝峰等你 */
+        if (S.quest.c5_3 === 'done' && !S.hasFlag('guTeachDaodao')) {
+          S.setSide('s2');
+          if (J.NPC) J.NPC.moveTo('gu', 13, -166);
+          J.UI.toast('顾长风起身，往天绝峰去了', 2.8);
+        }
       }
     },
 
@@ -426,6 +432,12 @@ J.Story = (function () {
     }
     /* 支线节点恢复 */
     if (S.quest.c2_2 === 'done' && !S.hasFlag('guTeachDaoyi')) S.setSide('s1');
+    /* 读过刀意之后，顾长风移去天绝峰等最后一战 */
+    if (S.quest.c5_3 === 'done' && S.hasFlag('guTeachDaoyi') && !S.hasFlag('guTeachDaodao') && J.NPC) {
+      J.NPC.moveTo('gu', 13, -166);
+    }
+    /* 结局后顾长风回到崖顶 */
+    if (S.ended && J.NPC) J.NPC.moveTo('gu', -19, 190);
     if (S.quest.c5_3 === 'done' && S.hasFlag('guTeachDaoyi') && !S.hasFlag('guTeachDaodao')) S.setSide('s2');
     if (S.ended && !S.hasFlag('epilogueSeen')) S.setSide('s3');
     S.refreshSide();

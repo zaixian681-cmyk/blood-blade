@@ -3,7 +3,7 @@
    渲染 / 天空 / 光照 / 几何合并 / 碰撞 / 输入
    ═══════════════════════════════════════════════ */
 var J = window.J = {
-  ver: 217,
+  ver: 230,
   clock: 0, dt: 0, timeScale: 1,
   world: null, hero: null, foes: [], fx: null, ui: null,
   paused: false,
@@ -157,6 +157,10 @@ J.initLights = function () {
   J.S.add(sun);
   J.S.add(sun.target);
   J.sun = sun;
+
+  /* 极弱环境光：托住室内/背光面的暗部，避免一片死黑 */
+  var amb = new THREE.AmbientLight(0x5a6a7c, 0.22);
+  J.S.add(amb);
 
   /* 背光补光：从反方向打来的冷色，勾边 */
   var fill = new THREE.DirectionalLight(0x88a8d8, 0.7);
