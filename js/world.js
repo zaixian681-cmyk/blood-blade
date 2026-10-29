@@ -131,36 +131,144 @@ J.World = (function () {
     }
   }
 
+  /* ═══════════════════════════════════════════════
+     中式木构民居 / 店铺
+     台基 → 柱网 → 额枋 → 粉墙 → 门窗 → 屋顶(翘角) → 匾额 → 灯笼
+     ═══════════════════════════════════════════════ */
   function house(cx, cz, w, d, h, opt) {
     opt = opt || {};
-    var y0 = hAt(cx, cz);
-    /* 采样四角与中心，取最低点，基座一直落到最低点以下 */
-    var minH = y0;
-    var probes = [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2],
-    [0, 0], [-w / 2, 0], [w / 2, 0], [0, -d / 2], [0, d / 2]];
+    var front = opt.front === undefined ? 1 : opt.front;
+
+    /* ── 台基：找最低点，保证坡地上不悬空 ── */
+    var minH = hAt(cx, cz), top = hAt(cx, cz) + 0.28;
+    var probes = [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2], [0, -d / 2], [0, d / 2]];
     for (var pi = 0; pi < probes.length; pi++) {
       var hh = hAt(cx + probes[pi][0], cz + probes[pi][1]);
       if (hh < minH) minH = hh;
     }
-    var baseBottom = minH - 1.2;
-    var baseTop = y0 + 0.35;
-    B.box(cx, (baseBottom + baseTop) / 2, cz, w + 0.9, baseTop - baseBottom, d + 0.9, C.stoneD);
-    B.boxB(cx, y0, cz, w, h, d, opt.wall || C.wall);
-    for (var sx = -1; sx <= 1; sx += 2)
-      for (var sz = -1; sz <= 1; sz += 2)
-        B.boxB(cx + sx * w / 2, y0, cz + sz * d / 2, 0.26, h, 0.26, C.woodD);
-    var fz = cz + (opt.front === undefined ? 1 : opt.front) * (d / 2 + 0.03);
-    B.box(cx, y0 + 1.1, fz, 1.1, 2.2, 0.12, C.wood);
-    B.box(cx, y0 + 2.3, fz, 1.4, 0.22, 0.18, C.woodD);
-    if (w > 4.6) {
-      for (var s2 = -1; s2 <= 1; s2 += 2) {
-        var wx = cx + s2 * (w / 2 - 1.25);
-        B.box(wx, y0 + 1.6, fz, 1.15, 1.0, 0.12, C.woodD);
-        B.box(wx, y0 + 1.6, fz + 0.04, 0.9, 0.76, 0.06, 0x1e1a16);
+    var bot = minH - 1.4;
+    B.box(cx, (bot + top) / 2, cz, w + 1.7, top - bot, d + 1.7, C.stoneD);
+    B.box(cx, top + 0.06, cz, w + 1.9, 0.14, d + 1.9, C.stoneL);
+
+    /* ── 台阶（朝街一侧）── */
+    var fz0 = cz + front * (d / 2 + 0.85);
+    for (var st = 0; st < 3; st++) {
+      B.box(cx, top - st * 0.16, fz0 + front * st * 0.42,
+        2.6 + st * 0.5, 0.17, 0.46, st % 2 ? C.stone : C.stoneL);
+    }
+
+    var y0 = top + 0.13;          // 柱脚标高
+    var wy = y0 + h;              // 檐口标高
+
+    /* ── 柱网 ── */
+    var colR = 0.17;
+    var cxL = -w / 2 + 0.3, cxR = w / 2 - 0.3;
+    var czF = -d / 2 + 0.3, czB = d / 2 - 0.3;
+    var colsX = [cxL, cxR];
+    var span = w - 0.6;
+    var nMid = Math.max(1, Math.round(span / 2.4) - 1);
+    for (var mi = 1; mi <= nMid; mi++) colsX.push(cxL + span * mi / (nMid + 1));
+    for (var ci = 0; ci < colsX.length; ci++) {
+      B.cyl(cx + colsX[ci], y0, cz + czF, colR, h, 8, C.wood);
+      B.cyl(cx + colsX[ci], y0, cz + czB, colR, h, 8, C.wood);
+      /* 柱础 */
+      B.box(cx + colsX[ci], y0 + 0.09, cz + czF, 0.5, 0.18, 0.5, C.stoneL);
+      B.box(cx + colsX[ci], y0 + 0.09, cz + czB, 0.5, 0.18, 0.5, C.stoneL);
+    }
+
+    /* ── 额枋（柱头横梁）+ 檐下枋 ── */
+    B.box(cx, wy - 0.18, cz + czF, w + 0.12, 0.36, 0.28, C.woodD);
+    B.box(cx, wy - 0.18, cz + czB, w + 0.12, 0.36, 0.28, C.woodD);
+    B.box(cx + cxL, wy - 0.18, cz, 0.28, 0.36, d + 0.12, C.woodD);
+    B.box(cx + cxR, wy - 0.18, cz, 0.28, 0.36, d + 0.12, C.woodD);
+    /* 檐下椽头 */
+    for (var rf = -1; rf <= 1; rf += 2) {
+      for (var rn = 0; rn < Math.floor(w / 0.55); rn++) {
+        B.box(cx - w / 2 + 0.3 + rn * 0.55, wy - 0.44, cz + rf * (d / 2 + 0.16),
+          0.1, 0.12, 0.34, C.woodD);
       }
     }
-    roof(cx, y0 + h + 0.12, cz, w, d, opt.roofH || Math.max(1.2, d * 0.32), C.tile, C.tileD);
-    J.Col.add(cx - w / 2, y0, cz - d / 2, cx + w / 2, y0 + h + 1.6, cz + d / 2, 'wall');
+
+    /* ── 墙体（柱间填充，粉墙）── */
+    var wallIn = 0.2;
+    /* 后墙 / 两侧墙 */
+    B.boxB(cx, y0, cz + czB, w - 0.5, h - 0.25, wallIn, C.wall);
+    B.boxB(cx + cxL, y0, cz, wallIn, h - 0.25, d - 0.5, C.wall);
+    B.boxB(cx + cxR, y0, cz, wallIn, h - 0.25, d - 0.5, C.wall);
+
+    /* ── 正立面：门 + 窗 ── */
+    var fz = cz + czF;
+    var doorW = 1.35;
+    /* 门框 */
+    B.box(cx, y0 + 1.15, fz, doorW + 0.34, 2.3, 0.16, C.woodD);
+    /* 两扇门 */
+    for (var dr = -1; dr <= 1; dr += 2) {
+      B.box(cx + dr * doorW / 4, y0 + 1.1, fz + front * 0.06, doorW / 2 - 0.04, 2.14, 0.1, C.wood);
+      /* 门钉 */
+      for (var dd = 0; dd < 3; dd++) {
+        B.box(cx + dr * doorW / 4, y0 + 0.55 + dd * 0.6, fz + front * 0.12,
+          0.06, 0.06, 0.04, C.gold, { noShade: true });
+      }
+    }
+    B.box(cx, y0 + 2.34, fz, doorW + 0.7, 0.16, 0.2, C.woodD);
+
+    /* 窗：门两侧各一扇（格子窗）*/
+    var winW = Math.max(0.9, Math.min(1.5, (w - doorW) / 2 - 0.9));
+    for (var ws = -1; ws <= 1; ws += 2) {
+      var wx2 = cx + ws * (doorW / 2 + winW / 2 + 0.42);
+      if (Math.abs(ws * (doorW / 2 + winW / 2 + 0.42)) > w / 2 - 0.75) continue;
+      B.box(wx2, y0 + 1.55, fz + front * 0.02, winW, 1.0, 0.08, 0x241c15);   // 暗窗底
+      /* 窗棂：竖 4 / 横 3 */
+      for (var vb = 0; vb <= 4; vb++) {
+        B.box(wx2 - winW / 2 + vb * (winW / 4), y0 + 1.55, fz + front * 0.08, 0.05, 1.0, 0.06, C.wood);
+      }
+      for (var hb = 0; hb <= 3; hb++) {
+        B.box(wx2, y0 + 1.05 + hb * (1.0 / 3), fz + front * 0.08, winW, 0.05, 0.06, C.wood);
+      }
+      B.box(wx2, y0 + 2.08, fz + front * 0.05, winW + 0.16, 0.1, 0.12, C.woodD);
+    }
+
+    /* ── 屋顶 ── */
+    var roofH = opt.roofH || Math.max(1.35, d * 0.34);
+    roof(cx, wy + 0.1, cz, w, d, roofH, C.tile, C.tileD);
+    /* 翘角（四角起翘） */
+    for (var ex = -1; ex <= 1; ex += 2) {
+      for (var ez = -1; ez <= 1; ez += 2) {
+        B.box(cx + ex * (w / 2 + 0.62), wy + 0.1 + roofH + 0.18, cz + ez * (d / 2 + 0.68),
+          0.86, 0.16, 0.5, C.tileD, { ry: ex * ez * 0.1, rz: -ex * 0.34 });
+      }
+    }
+
+    /* ── 匾额 ── */
+    if (opt.plaque !== false) {
+      B.box(cx, wy + 0.42, cz + czF + front * 0.22, Math.min(2.6, w * 0.44), 0.62, 0.1, 0x2a2018);
+      B.box(cx, wy + 0.42, cz + czF + front * 0.28, Math.min(2.3, w * 0.38), 0.08, 0.04, C.gold, { noShade: true });
+      B.box(cx, wy + 0.78, cz + czF + front * 0.24, Math.min(2.8, w * 0.48), 0.1, 0.16, C.gold, { noShade: true });
+      B.box(cx, wy + 0.06, cz + czF + front * 0.24, Math.min(2.8, w * 0.48), 0.1, 0.16, C.gold, { noShade: true });
+    }
+
+    /* ── 檐下灯笼一对 ── */
+    var lx0 = Math.min(3.2, w / 2 - 0.5);
+    for (var ld = -1; ld <= 1; ld += 2) {
+      var lx = cx + ld * lx0, lz = cz + czF + front * 0.62;
+      lantern(lx, wy + 0.02, lz, 0xc4352a);
+      B.box(lx, wy + 0.3, lz, 0.04, 0.6, 0.04, C.woodD);
+    }
+
+    /* ── 店铺：酒旗 / 布幡 ── */
+    if (opt.shop) {
+      var bx2 = cx + (opt.shopSide || 1) * (w / 2 + 0.9);
+      var bz2 = cz + front * (d / 2 + 1.1);
+      B.cyl(bx2, y0, bz2, 0.09, 4.4, 6, C.woodD);
+      B.boxB(bx2, y0 + 3.0, bz2 + front * 0.4, 0.9, 1.5, 0.05, opt.bannerCol || 0xa8402f,
+        { ry: front * 0.2 });
+      B.box(bx2, y0 + 4.42, bz2, 0.12, 0.12, 0.12, C.gold, { noShade: true });
+      /* 柜台 / 幌子下的矮台 */
+      B.boxB(cx + front * 0, y0, cz + front * (d / 2 + 0.55), w * 0.7, 0.62, 0.5, C.wood);
+      J.Col.add(bx2 - 0.12, y0, bz2 - 0.12, bx2 + 0.12, y0 + 4.4, bz2 + 0.12, 'thin');
+    }
+
+    J.Col.add(cx - w / 2, y0, cz - d / 2, cx + w / 2, y0 + h + roofH, cz + d / 2, 'wall');
   }
 
   function lamp(x, z) {
@@ -409,7 +517,13 @@ J.World = (function () {
       var hx = rx + h[0];
       var hw = 6.5 + Math.random() * 2.5;
       var hd = 6 + Math.random() * 2;
-      house(hx, h[1], hw, hd, 3.2 + Math.random() * 0.8, { front: h[2], roofH: 1.9 });
+      house(hx, h[1], hw, hd, 3.1 + Math.random() * 0.7, {
+        front: h[2],
+        roofH: 1.85 + Math.random() * 0.4,
+        shop: (i % 3 === 0),
+        shopSide: (i % 2 ? 1 : -1),
+        bannerCol: i % 2 ? 0xa8402f : 0x2f5a86
+      });
     }
 
     /* 河上木桥（跨河，连接两岸） */
@@ -444,11 +558,15 @@ J.World = (function () {
     B.box(dx + 7, 10.6, dz, 17, 0.20, 4.0, C.woodL);
     J.Col.add(dx - 1, 10.2, dz - 2, dx + 16, 10.8, dz + 2, 'ground');
 
-    /* 灯笼 */
-    for (var L = 0; L < 6; L++) {
-      var lz = 90 - L * 22;
-      var lx = J.Terrain.riverX(lz) - 18;
-      lantern(lx, hAt(lx, lz) + 3.4, lz, 0xc8382a);
+    /* 主街灯笼（两岸各一排，挂在屋檐口的高度） */
+    for (var L = 0; L < 9; L++) {
+      var lz = 96 - L * 14;
+      for (var sd = -1; sd <= 1; sd += 2) {
+        var lx = J.Terrain.riverX(lz) + sd * 21;
+        lantern(lx, hAt(lx, lz) + 3.9, lz, 0xc4352a);
+        B.cyl(lx, hAt(lx, lz), lz, 0.07, 3.9, 6, C.woodD);
+        J.Col.add(lx - 0.1, hAt(lx, lz), lz - 0.1, lx + 0.1, hAt(lx, lz) + 3.9, lz + 0.1, 'thin');
+      }
     }
 
     W.regions.push({ id: 3, name: '断崖谷底 · 渡口', x: rxc, z: 60, r: 62 });
