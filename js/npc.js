@@ -143,8 +143,8 @@ J.NPC = (function () {
       dialog: 'shen_meet'
     });
 
-    /* 空寂和尚：古寺 */
-    spawn('monk', -52, 24, {
+    /* 空寂和尚：古寺大殿前 */
+    spawn('monk', -52, 22, {
       name: '空寂和尚',
       cloth: 0x9a8a70, trim: 0x6a5a44, hair: 0xd8d0c0,
       yaw: 0.4, dialog: 'monk_talk'
@@ -158,7 +158,7 @@ J.NPC = (function () {
     });
 
     /* 萧无极：山顶断剑宫 */
-    spawn('xiao', 0, -178, {
+    spawn('xiao', 0, -179, {
       name: '萧无极',
       cloth: 0x6a1a1a, trim: 0xc08a3a, hair: 0x1a1614,
       yaw: 0, dialog: 'xiao_taunt', boss: true

@@ -487,6 +487,177 @@ J.World = (function () {
   }
 
   /* ═══════════════════════════════════════════════
+     废弃古寺（谷底西侧）
+     ═══════════════════════════════════════════════ */
+  function buildTemple() {
+    var cx = -52, cz = 20;
+    var y = hAt(cx, cz);
+
+    /* 石台基 */
+    B.box(cx, y + 0.25, cz, 30, 0.6, 26, C.stoneD);
+    J.Col.add(cx - 15, y - 0.5, cz - 13, cx + 15, y + 0.55, cz + 13, 'ground');
+
+    /* 残破山门 */
+    for (var s = -1; s <= 1; s += 2) {
+      B.boxB(cx + s * 5.4, y + 0.5, cz + 13, 0.75, 5.2, 0.75, C.stoneD);
+      B.box(cx + s * 5.4, y + 4.6, cz + 13, 0.95, 0.35, 0.95, C.stoneL);
+      J.Col.add(cx + s * 5.4 - 0.5, y, cz + 12.6, cx + s * 5.4 + 0.5, y + 5.4, cz + 13.4, 'wall');
+    }
+    B.box(cx + 5.4, y + 5.4, cz + 13, 3.2, 0.4, 0.6, C.stoneD, { rz: 0.05 });
+    B.box(cx, y + 5.6, cz + 13, 6, 0.35, 0.55, C.stoneD);
+
+    /* 院墙（前后留口） */
+    for (var w = -1; w <= 1; w += 2) {
+      for (var wx = -6; wx <= 6; wx++) {
+        B.boxB(cx + w * 13, y + 0.5, cz + wx * 2, 0.6, 2.4, 1.9, C.wallD);
+      }
+      J.Col.add(cx + w * 13 - 0.4, y, cz - 13, cx + w * 13 + 0.4, y + 3, cz + 13, 'wall');
+    }
+
+    /* 主殿（可进入） */
+    var hx = cx, hz = cz - 2, HW = 11, HD = 9, HH = 4.8;
+    B.box(hx, y + 0.45, hz, HW + 2.4, 0.9, HD + 2.4, C.stoneL);
+    B.boxB(hx, y + 0.9, hz - HD / 2, HW, HH, 0.6, C.wall);
+    B.boxB(hx - HW / 2, y + 0.9, hz, 0.6, HH, HD, C.wall);
+    B.boxB(hx + HW / 2, y + 0.9, hz, 0.6, HH, HD, C.wall);
+    /* 前墙留门洞 */
+    B.boxB(hx - (HW / 4 + 0.9), y + 0.9, hz + HD / 2, HW / 2 - 1.8, HH, 0.6, C.wall);
+    B.boxB(hx + (HW / 4 + 0.9), y + 0.9, hz + HD / 2, HW / 2 - 1.8, HH, 0.6, C.wall);
+    B.boxB(hx - 1.9, y + 0.9, hz + HD / 2, 0.45, 4.2, 0.8, C.redD);
+    B.boxB(hx + 1.9, y + 0.9, hz + HD / 2, 0.45, 4.2, 0.8, C.redD);
+    B.box(hx, y + 5.2, hz + HD / 2, 4.4, 0.45, 0.8, C.woodD);
+
+    /* 柱子 */
+    for (var c2 = -1; c2 <= 1; c2 += 2) {
+      B.boxB(hx + c2 * (HW / 2 - 1.0), y + 0.9, hz + HD / 2 - 1.0, 0.38, HH, 0.38, C.redD);
+    }
+    roof(hx, y + 0.9 + HH, hz, HW, HD, 2.4, C.tile, C.tileD);
+
+    /* 碰撞（留门） */
+    J.Col.add(hx - HW / 2, y + 0.9, hz - HD / 2, hx + HW / 2, y + 0.9 + HH, hz - HD / 2 + 0.5, 'wall');
+    J.Col.add(hx - HW / 2, y + 0.9, hz - HD / 2, hx - HW / 2 + 0.5, y + 0.9 + HH, hz + HD / 2, 'wall');
+    J.Col.add(hx + HW / 2 - 0.5, y + 0.9, hz - HD / 2, hx + HW / 2, y + 0.9 + HH, hz + HD / 2, 'wall');
+    J.Col.add(hx - HW / 2, y + 0.9, hz + HD / 2 - 0.5, hx - 1.7, y + 0.9 + HH, hz + HD / 2, 'wall');
+    J.Col.add(hx + 1.7, y + 0.9, hz + HD / 2 - 0.5, hx + HW / 2, y + 0.9 + HH, hz + HD / 2, 'wall');
+    /* 殿内地板 */
+    J.Col.add(hx - HW / 2, y + 0.4, hz - HD / 2, hx + HW / 2, y + 0.95, hz + HD / 2, 'ground');
+
+    /* 佛像（密道在佛像背后） */
+    B.box(hx, y + 1.8, hz - 2.6, 4.4, 1.8, 2.6, C.stoneL);
+    B.box(hx, y + 3.6, hz - 2.8, 1.9, 2.0, 1.4, 0x9a8e76);
+    B.box(hx, y + 4.8, hz - 2.8, 2.3, 0.35, 1.7, C.gold);
+    J.Col.add(hx - 2.2, y + 0.9, hz - 4.1, hx + 2.2, y + 4.6, hz - 1.2, 'wall');
+
+    /* 供桌 */
+    B.box(hx, y + 1.35, hz + 1.6, 2.8, 0.16, 1.1, C.woodD);
+    B.boxB(hx - 1.2, y + 0.9, hz + 1.6, 0.16, 0.5, 0.9, C.woodD);
+    B.boxB(hx + 1.2, y + 0.9, hz + 1.6, 0.16, 0.5, 0.9, C.woodD);
+
+    /* 石灯与枯树 */
+    lamp(cx - 8, cz + 8);
+    lamp(cx + 8, cz + 8);
+    for (var k = 0; k < 4; k++) {
+      var px2 = cx + rnd(-11, 11), pz2 = cz + rnd(6, 11);
+      var py2 = hAt(px2, pz2);
+      B.cyl(px2, py2, pz2, 0.28, rnd(0.9, 2.2), 8, C.stone, { r2: 0.24 });
+    }
+    [[-11, 4], [10, 2]].forEach(function (p) {
+      var tx = cx + p[0], tz = cz + p[1], ty = hAt(tx, tz);
+      B.cyl(tx, ty, tz, 0.26, 4.2, 6, 0x4a4034);
+      for (var br = 0; br < 3; br++) {
+        var ba = rnd(0, 6.28);
+        B.box(tx + Math.cos(ba) * 1.2, ty + 3.0 + br * 0.4, tz + Math.sin(ba) * 1.2,
+          1.6, 0.12, 0.12, 0x4a4034, { ry: ba, rz: rnd(-0.4, 0.4) });
+      }
+    });
+
+    W.templeCenter = { x: hx, z: hz, y: y + 0.9 };
+    W.passagePos = { x: hx, y: y + 0.9, z: hz - 4.6 };
+    W.regions.push({ id: 3, name: '废弃古寺', x: cx, z: cz, r: 34 });
+  }
+
+  /* ═══════════════════════════════════════════════
+     血衣门总坛（北坡）
+     ═══════════════════════════════════════════════ */
+  function buildLair() {
+    var cx = J.Terrain.riverX(-100), cz = -100;
+    var y = hAt(cx, cz);
+
+    /* 木栅栏围场 */
+    for (var a = 0; a < 32; a++) {
+      var ang = a / 32 * Math.PI * 2;
+      var px = cx + Math.cos(ang) * 24;
+      var pz = cz + Math.sin(ang) * 24;
+      /* 正门朝南留口 */
+      if (Math.abs(J.U.ang(ang, Math.PI / 2)) < 0.34) continue;
+      var py = hAt(px, pz);
+      B.boxB(px, py - 0.4, pz, 0.3, 3.2, 0.3, 0x3a2418, { ry: ang });
+      if (a % 2 === 0) B.box(px, py + 1.4, pz, 0.14, 0.14, 3.6, 0x3a2418, { ry: ang });
+      J.Col.add(px - 0.22, py, pz - 0.22, px + 0.22, py + 3, pz + 0.22, 'thin');
+    }
+
+    /* 总坛大门 */
+    var gx = cx, gz = cz + 24;
+    var gy = hAt(gx, gz);
+    for (var s = -1; s <= 1; s += 2) {
+      B.boxB(gx + s * 3.4, gy - 0.4, gz, 0.46, 5.0, 0.46, 0x3a2418);
+      J.Col.add(gx + s * 3.4 - 0.3, gy, gz - 0.3, gx + s * 3.4 + 0.3, gy + 4.8, gz + 0.3, 'wall');
+    }
+    B.box(gx, gy + 4.8, gz, 0.5, 0.5, 7.4, 0x3a2418);
+    /* 血红旗 */
+    for (var f = -1; f <= 1; f += 2) {
+      B.box(gx + f * 0.9, gy + 3.2, gz + 0.3, 1.8, 3.0, 0.05, 0x8a1a14);
+      B.box(gx + f * 0.9, gy + 2.6, gz + 0.32, 1.0, 0.9, 0.02, 0x1a1210);
+    }
+
+    /* 帐篷 */
+    [[-13, -4], [12, -6], [-9, 12], [14, 10]].forEach(function (p) {
+      var tx = cx + p[0], tz = cz + p[1], ty = hAt(tx, tz);
+      B.taper(tx, ty, tz, 5.4, 5.0, 1.2, 1.0, 3.0, 0x5a4a3a);
+      B.box(tx, ty + 0.05, tz, 5.8, 0.1, 5.4, 0x4a3a2c);
+      B.box(tx, ty + 1.2, tz + 2.4, 1.4, 1.6, 0.2, 0x2a2018);
+      J.Col.add(tx - 2.7, ty, tz - 2.5, tx + 2.7, ty + 2.8, tz + 2.5, 'wall');
+    });
+
+    /* 火盆 */
+    for (var fp = 0; fp < 3; fp++) {
+      var fx = cx + (fp - 1) * 10, fz = cz + 2;
+      var fy = hAt(fx, fz);
+      B.cyl(fx, fy, fz, 0.7, 0.9, 8, 0x2a2018, { r2: 0.55 });
+      B.box(fx, fy + 0.95, fz, 1.2, 0.12, 1.2, 0xff7a2a, { noShade: true });
+      var fl = new THREE.PointLight(0xff7a30, 2.4, 16, 2);
+      fl.position.set(fx, fy + 1.4, fz);
+      J.S.add(fl);
+      W.fires.push({ l: fl, ph: Math.random() * 6.28 });
+    }
+
+    /* 石牢：囚禁公主 */
+    var px2 = cx + 4, pz2 = cz - 12;
+    var py2 = hAt(px2, pz2);
+    B.box(px2, py2 + 0.1, pz2, 4.2, 0.3, 4.2, C.stoneD);
+    for (var b2 = 0; b2 < 9; b2++) {
+      var ba2 = b2 / 9 * Math.PI * 2;
+      B.boxB(px2 + Math.cos(ba2) * 2.0, py2 + 0.2, pz2 + Math.sin(ba2) * 2.0, 0.16, 3.0, 0.16, 0x4a4a50);
+    }
+    B.box(px2, py2 + 3.2, pz2, 4.4, 0.2, 4.4, 0x3a3a40);
+    J.Col.add(px2 - 2.2, py2, pz2 - 2.2, px2 + 2.2, py2 + 3.2, pz2 + 2.2, 'wall');
+    /* 内部地板 */
+    J.Col.add(px2 - 1.9, py2 + 0.1, pz2 - 1.9, px2 + 1.9, py2 + 0.35, pz2 + 1.9, 'ground');
+
+    /* 兵器架 */
+    var wx = cx - 12, wz = cz - 8, wy = hAt(wx, wz);
+    B.box(wx, wy + 0.9, wz, 3.4, 0.16, 0.3, 0x3a2418);
+    for (var wq = 0; wq < 5; wq++) {
+      B.box(wx - 1.4 + wq * 0.7, wy + 1.5, wz, 0.07, 2.0, 0.07, 0x9aa0a8, { rz: rnd(-0.12, 0.12) });
+    }
+    J.Col.add(wx - 1.8, wy, wz - 0.4, wx + 1.8, wy + 2.6, wz + 0.4, 'thin');
+
+    W.lairCenter = { x: cx, z: cz, y: y };
+    W.cagePos = { x: px2, y: py2, z: pz2 };
+    W.regions.push({ id: 5, name: '血衣门总坛', x: cx, z: cz, r: 40 });
+  }
+
+  /* ═══════════════════════════════════════════════
      北岸山坡 + 山顶宫殿
      ═══════════════════════════════════════════════ */
   function buildNorthSlope() {
@@ -621,6 +792,8 @@ J.World = (function () {
     buildStairs();
     buildFallArea();
     buildTown();
+    buildTemple();
+    buildLair();
     buildNorthSlope();
     buildPalace();
 
@@ -784,6 +957,45 @@ J.World = (function () {
     /* 桥头石碑 */
     var bz = 34, bx = J.Terrain.pathX(bz) + 6;
     J.Interact.addStele(bx, bz, '断崖吊桥\n此行向北，黑风寨在此山中。', 0.2);
+
+    /* 佛像暗门 */
+    if (W.passagePos) {
+      J.Interact.add({
+        id: 'passage', x: W.passagePos.x, y: W.passagePos.y, z: W.passagePos.z,
+        r: 3.4, label: '推开佛像', tag: 'passage',
+        onUse: function () {
+          J.UI.toast('佛像缓缓移开，露出向下的石阶', 2.6);
+          J.FX.ring(W.passagePos.x, W.passagePos.y + 1.2, W.passagePos.z, 0xc0a0ff, 3.0);
+          if (J.Story) J.Story.onInteract('passage');
+        }
+      });
+    }
+    /* 密道账册 */
+    if (W.templeCenter) {
+      var t2 = W.templeCenter;
+      J.Interact.addChest(t2.x + 3.0, t2.z - 7.0, {
+        id: 'ledger', ry: 0.2,
+        reward: '取得 血衣门账册',
+        onUse: function () {
+          if (J.Story) J.Story.onInteract('ledger');
+        }
+      });
+    }
+    /* 囚笼解绳 */
+    if (W.cagePos) {
+      J.Interact.add({
+        id: 'rescueShen', x: W.cagePos.x, y: W.cagePos.y, z: W.cagePos.z,
+        r: 4.0, label: '解开绳索', tag: 'rescue', once: true,
+        onUse: function () {
+          J.UI.toast('绳索落地，沈昭宁站起身来', 2.6);
+          J.FX.ring(W.cagePos.x, W.cagePos.y + 1.0, W.cagePos.z, 0xffd070, 3.2);
+          if (J.Story) {
+            J.Story.onInteract('rescueShen');
+            J.Story.talk('shen', 'shen_freed');
+          }
+        }
+      });
+    }
 
     /* 断剑谷石碑 */
     var vz = -200, vx = J.Terrain.pathX(vz) + 9;

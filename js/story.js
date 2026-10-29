@@ -247,6 +247,25 @@ J.Story = (function () {
         break;
       }
     }
+    /* 沈昭宁随剧情移动 */
+    if (J.NPC) {
+      if (S.quest.c2_2 === 'done' && J.World.townCenter) {
+        J.NPC.moveTo('shen', J.World.townCenter.x - 10, J.World.townCenter.z + 24);
+      }
+      if (S.quest.c3_3 === 'done' && J.World.templeCenter) {
+        J.NPC.moveTo('shen', J.World.templeCenter.x + 3, J.World.templeCenter.z + 6);
+      }
+      if (S.quest.c4_3 === 'done' && J.World.lairCenter) {
+        /* 被俘：移到囚笼 */
+        var cg = J.World.cagePos;
+        J.NPC.moveTo('shen', cg.x, cg.z);
+        if (J.Story) S.talk('shen', 'shen_captured');
+      }
+      if (S.quest.c5_3 === 'done') {
+        J.NPC.moveTo('shen', 0, -176);
+      }
+    }
+
     /* 章节内的刀觉醒 */
     if (S.quest.c2_2 === 'done' && S.bladeStage < 2) S.setBladeStage(2);
     if (S.quest.c5_3 === 'done' && S.bladeStage < 3) S.setBladeStage(3);
