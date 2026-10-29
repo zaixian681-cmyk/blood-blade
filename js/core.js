@@ -83,11 +83,11 @@ r.setPixelRatio(Math.min(window.devicePixelRatio || 1, J.dprCap));
   r.shadowMap.type = THREE.PCFSoftShadowMap;
   r.outputColorSpace = THREE.SRGBColorSpace;
   r.toneMapping = THREE.ACESFilmicToneMapping;
-  r.toneMappingExposure = 1.02;
+  r.toneMappingExposure = 1.10;
   J.R = r;
 
   var sc = new THREE.Scene();
-  sc.fog = new THREE.FogExp2(0xbcccd6, 0.0021);
+  sc.fog = new THREE.FogExp2(0xc6d2d8, 0.0052);
   J.S = sc;
 
   var cam = new THREE.PerspectiveCamera(62, (J.Stage.W || window.innerWidth) / (J.Stage.H || window.innerHeight), 0.1, 900);
@@ -109,8 +109,8 @@ J.buildSky = function (topCol, midCol, botCol) {
       cTop: { value: new THREE.Color(topCol) },
       cMid: { value: new THREE.Color(midCol) },
       cBot: { value: new THREE.Color(botCol) },
-      cSun: { value: new THREE.Color(0xffd9a0) },
-      sunDir: { value: new THREE.Vector3(0.66, 0.26, -0.70).normalize() }
+      cSun: { value: new THREE.Color(0xffd8a8) },
+      sunDir: { value: new THREE.Vector3(0.50, 0.52, 0.69).normalize() }
     },
     vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
     fragmentShader: [
@@ -137,25 +137,28 @@ J.buildSky = function (topCol, midCol, botCol) {
 
 /* ── 光照：斜阳低角度，长影子，最有武侠味 ── */
 J.initLights = function () {
-  var hemi = new THREE.HemisphereLight(0xbccdd8, 0x6a5e48, 1.45);
+  /* 天空填充光：冷蓝的天光 + 暖褐的地面反射 */
+  var hemi = new THREE.HemisphereLight(0xa8bccc, 0x8a7860, 0.78);
   J.S.add(hemi);
 
-  var sun = new THREE.DirectionalLight(0xffd0a0, 2.35);
-  sun.position.set(130, 52, -150);
+  /* 主光：低角度暖阳（傍晚），产生长阴影 */
+  var sun = new THREE.DirectionalLight(0xffc182, 2.85);
+  sun.position.set(88, 122, 118);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(768, 768);
-  var s = 46;
+  sun.shadow.mapSize.set(1024, 1024);
+  var s = 88;
   sun.shadow.camera.left = -s; sun.shadow.camera.right = s;
   sun.shadow.camera.top = s; sun.shadow.camera.bottom = -s;
-  sun.shadow.camera.near = 20; sun.shadow.camera.far = 400;
-  sun.shadow.bias = -0.0009;
-  sun.shadow.normalBias = 0.035;
+  sun.shadow.camera.near = 50; sun.shadow.camera.far = 420;
+  sun.shadow.bias = -0.0008;
+  sun.shadow.normalBias = 0.030;
   J.S.add(sun);
   J.S.add(sun.target);
   J.sun = sun;
 
-  var fill = new THREE.DirectionalLight(0x8fa8c8, 0.42);
-  fill.position.set(40, 26, -50);
+  /* 背光补光：从反方向打来的冷色，勾边 */
+  var fill = new THREE.DirectionalLight(0x88a8d8, 0.95);
+  fill.position.set(-90, 40, -110);
   J.S.add(fill);
   J.fill = fill;
 };
@@ -163,7 +166,7 @@ J.initLights = function () {
 J.updateSun = function (px, pz) {
   var sun = J.sun; if (!sun) return;
   sun.target.position.set(px, 0, pz);
-  sun.position.set(px + 130, 52, pz - 150);
+  sun.position.set(px + 88, 122, pz + 118);
   sun.target.updateMatrixWorld();
 };
 /* ═══ 几何合并器 ═══ 把成百上千个方块压成一个网格 */

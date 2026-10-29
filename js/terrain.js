@@ -152,12 +152,12 @@ J.Terrain = (function () {
     var col = new Float32Array(n * n * 3);
     var hs = new Float32Array(n * n);
 
-    var cGrass = new THREE.Color(0x54683a);
-    var cGrass2 = new THREE.Color(0x445830);
-    var cDirt = new THREE.Color(0x6a5842);
+    var cGrass = new THREE.Color(0x4c6238);
+    var cGrass2 = new THREE.Color(0x3e5430);
+    var cDirt = new THREE.Color(0x5a5040);
     var cRock = new THREE.Color(0x6e6b62);
     var cRockH = new THREE.Color(0x828a92);
-    var cPath = new THREE.Color(0x8a7a60);
+    var cPath = new THREE.Color(0x7e7466);
     var tmp = new THREE.Color();
 
     for (var iz = 0; iz < n; iz++) {
@@ -186,7 +186,7 @@ J.Terrain = (function () {
         else tmp.copy(cRock).lerp(cRockH, ss(58, 95, h0));
 
         /* 主路：踩出土色 */
-        if (dRoad < 7 && h0 > -6) tmp.lerp(cPath, ss(7, 3, dRoad) * 0.85);
+        if (dRoad < 6 && h0 > -6) tmp.lerp(cPath, ss(6, 2.5, dRoad) * 0.7);
         /* 陡坡露岩 */
         tmp.lerp(cRock, sl * 0.66);
         /* 高处偏冷 */

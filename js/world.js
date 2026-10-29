@@ -16,7 +16,7 @@ J.World = (function () {
     wall: 0xbfb6a4, wallD: 0x8a8172,
     tile: 0x2b3138, tileD: 0x1a1e23,
     red: 0x8a2e26, redD: 0x5a1c16, gold: 0xc09850,
-    bamboo: 0x4e6428, bambooL: 0x627c34, leaf: 0x3a5024,
+    bamboo: 0x5c7830, bambooL: 0x6f8c3c, leaf: 0x486328,
     rock: 0x77746a, rockD: 0x57544c, moss: 0x4a5a34,
     grass: 0x5a6e3c, grass2: 0x4a5e30
   };
@@ -204,15 +204,15 @@ J.World = (function () {
   /* ══ 地表细节：草丛 / 灌木 / 碎石 ══ */
   function grassTuft(x, z, s) {
     var y0 = hAt(x, z);
-    var blades = 3 + Math.floor(Math.random() * 3);
+    var blades = 5 + Math.floor(Math.random() * 4);
     for (var i = 0; i < blades; i++) {
-      var bx = x + rnd(-0.22, 0.22) * s;
-      var bz = z + rnd(-0.22, 0.22) * s;
-      var hh = (0.40 + Math.random() * 0.40) * s;
-      var w = (0.045 + Math.random() * 0.035) * s;
-      var col = Math.random() > 0.5 ? 0x6a8046 : 0x55703a;
+      var bx = x + rnd(-0.30, 0.30) * s;
+      var bz = z + rnd(-0.30, 0.30) * s;
+      var hh = (0.16 + Math.random() * 0.16) * s;
+      var w = (0.14 + Math.random() * 0.10) * s;
+      var col = Math.random() > 0.5 ? 0x4f6e34 : 0x3e5a2a;
       B.box(bx, y0 + hh / 2, bz, w, hh, 0.03, col,
-        { ry: Math.random() * 3.14, rz: rnd(-0.28, 0.28) });
+        { ry: Math.random() * 3.14, rz: rnd(-0.35, 0.35) });
     }
   }
 
@@ -260,7 +260,8 @@ J.World = (function () {
     for (var k = 0; k < 900; k++) {
       var z = rnd(-210, 190);
       var px = J.Terrain.pathX(z);
-      var x = px + (Math.random() - 0.5) * 2 * rnd(4.5, 30);
+      var sd = Math.random() > 0.5 ? 1 : -1;
+      var x = px + sd * rnd(3.2, 26);
       if (Math.abs(x) > 205) continue;
       var h = hAt(x, z);
       if (h < -10) continue;
@@ -269,13 +270,14 @@ J.World = (function () {
     }
 
     /* 3) 草丛：只在高草区，密度低、叶片细 */
-    for (var g = 0; g < 420; g++) {
+    for (var g = 0; g < 260; g++) {
       var z2 = rnd(-200, 180);
-      var x2 = J.Terrain.pathX(z2) + (Math.random() - 0.5) * 2 * rnd(9, 55);
+      var side = Math.random() > 0.5 ? 1 : -1;
+      var x2 = J.Terrain.pathX(z2) + side * rnd(13, 58);
       if (Math.abs(x2) > 200) continue;
       var h2 = hAt(x2, z2);
       if (h2 < -8 || J.Terrain.slopeAt(x2, z2) > 0.75) continue;
-      grassTuft(x2, z2, rnd(1.1, 1.8));
+      grassTuft(x2, z2, rnd(1.0, 1.6));
     }
   }
 
@@ -706,9 +708,9 @@ J.World = (function () {
     var ctex = [cloudTex(0.2), cloudTex(0.55), cloudTex(0.9)];
     for (var ci = 0; ci < 24; ci++) {
       var ang = Math.random() * 6.283, dist = 120 + Math.random() * 260;
-      var yy = 40 + Math.random() * 90;
+      var yy = 90 + Math.random() * 110;
       var sp = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: ctex[ci % 3], transparent: true, opacity: 0.10 + Math.random() * 0.20,
+        map: ctex[ci % 3], transparent: true, opacity: 0.08 + Math.random() * 0.15,
         depthWrite: false, fog: false,
         color: new THREE.Color().setHSL(0.09, 0.05, 0.88)
       }));

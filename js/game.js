@@ -12,7 +12,7 @@ J.boot = function () {
   try {
     J.Stage.init();
     J.initRenderer();
-    J.buildSky(0x3f6278, 0x9db6c0, 0xd8c8a8);
+    J.buildSky(0x3d6183, 0x9ab8c8, 0xe6d2b0);
     J.initLights();
     J.Col.reset();
     J.World.build();
