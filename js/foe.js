@@ -34,7 +34,18 @@
   var MAT = {};
   function mat(c, rough, metal) {
     var k = c + '_' + (rough || 0) + '_' + (metal || 0);
-    if (!MAT[k]) MAT[k] = new THREE.MeshStandardMaterial({ color: c, roughness: rough === undefined ? 0.75 : rough, metalness: metal || 0 });
+    if (!MAT[k]) {
+      var mm = new THREE.MeshStandardMaterial({ color: c, roughness: rough === undefined ? 0.75 : rough, metalness: metal || 0 });
+      mm.onBeforeCompile = function (sh) {
+        sh.fragmentShader = sh.fragmentShader.replace('#include <dithering_fragment>',
+          ['#include <dithering_fragment>',
+           'vec3 _vd2 = normalize(vViewPosition);',
+           'float _rim2 = pow(1.0 - abs(dot(normalize(normal), _vd2)), 2.4);',
+           'gl_FragColor.rgb += vec3(0.42,0.55,0.72) * _rim2 * 0.9;'
+          ].join('\n'));
+      };
+      MAT[k] = mm;
+    }
     return MAT[k];
   }
 
@@ -323,11 +334,15 @@
       this.pos.z += this.knock.z * dt;
       this.knock.multiplyScalar(Math.exp(-7 * dt));
 
-      // 浮空
-      if (this.pos.y > 0 || this.vy !== 0) {
+      // 浮空 / 贴地
+      var gy = J.Terrain.heightAt(this.pos.x, this.pos.z);
+      if (this.pos.y > gy + 0.02 || this.vy > 0) {
         this.vy -= 22 * dt;
         this.pos.y += this.vy * dt;
-        if (this.pos.y <= 0) { this.pos.y = 0; this.vy = 0; }
+        if (this.pos.y <= gy) { this.pos.y = gy; this.vy = 0; }
+      } else {
+        this.pos.y = gy;
+        this.vy = 0;
       }
 
       /* 状态机 */
@@ -522,24 +537,25 @@
       J.foes.push(f);
       return f;
     }
-    // 街道巡场山贼
-    add('bandit', -6, -30, 0.5);
-    add('bandit', 6, -28, -0.6);
-    add('bandit', 0, -6, 2.2);
-    add('bandit', -8, 4, 1.0);
-    add('bandit', 8, 12, -1.4);
-    add('bandit', 2, 24, 3.0);
-    add('bandit', -4, 34, 0.2);
-    // 护院守铁匠铺
-    add('guard', 12, 22, -0.4);
-    add('guard', -12, 18, 0.6);
-    // 飞镖手
-    add('thrower', -20, -14, 0.8);
-    add('thrower', 20, -6, -0.9);
-    add('thrower', -18, 30, 0.3);
-    // Boss 在破庙
-    var boss = add('boss', 0, 50, Math.PI);
-    boss.home.set(0, 0, 52);
+    // 山路伏击（玩家下山路上）
+    add('bandit', -74, -18, 0.8);
+    add('bandit', -62, 6, -0.4);
+    // 谷底城镇
+    add('bandit', -22, -30, 0.5);
+    add('bandit', 24, -48, -0.6);
+    add('bandit', -26, 10, 2.2);
+    add('bandit', 28, 22, 1.0);
+    add('bandit', -20, 56, -1.4);
+    // 护院守客栈
+    add('guard', 20, -62, -0.4);
+    add('guard', -28, -70, 0.6);
+    // 飞镖手（竹林/高处）
+    add('thrower', -56, 40, 0.8);
+    add('thrower', 58, -20, -0.9);
+    add('thrower', -64, -60, 0.3);
+    // Boss 守在河湾高地
+    var boss = add('boss', 0, 96, Math.PI);
+    boss.home.set(0, 96);
     J.boss = boss;
   };
 

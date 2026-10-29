@@ -16,7 +16,7 @@ J.boot = function () {
   var bootEl = document.getElementById('boot');
   try {
     J.initRenderer();
-    J.buildSky(0x6f8ba8, 0xb9b2a4, 0xc9b79c);
+    J.buildSky(0x3f6278, 0x9db6c0, 0xd8c8a8);
     J.initLights();
     J.Col.reset();
     J.World.build();
@@ -47,7 +47,7 @@ J.initPlayer = function () {
   var W = J.World;
   var P = {
     model: H, weapon: wp,
-    pos: new THREE.Vector3(W.spawn.x, 0, W.spawn.z),
+    pos: new THREE.Vector3(W.spawn.x, J.Terrain.heightAt(W.spawn.x, W.spawn.z), W.spawn.z),
     yaw: W.spawn.yaw, vy: 0, onGround: true,
     hp: 240, maxHp: 240, stamina: 100, maxStamina: 100,
     state: 'idle', tim: 0, move: null, moveId: '', hitSet: [],
@@ -214,7 +214,7 @@ J.updatePlayer = function (dt, t) {
       P.respawnT -= dt;
       if (P.respawnT <= 0) {
         P.dead = false; P.hp = P.maxHp; P.stamina = P.maxStamina;
-        P.pos.set(J.World.spawn.x, 0, J.World.spawn.z);
+        P.pos.set(J.World.spawn.x, J.Terrain.heightAt(J.World.spawn.x, J.World.spawn.z), J.World.spawn.z);
         P.yaw = J.World.spawn.yaw; P.camYaw = P.yaw + Math.PI;
         P.state = 'idle'; P.tim = 0; P.target = null;
         H.root.rotation.x = 0;
@@ -310,6 +310,8 @@ J.updatePlayer = function (dt, t) {
     if (canMove && IN.mag > 0.05) {
       var isRun = IN.mag > 0.86 && P.stamina > 8;
       mspd = isRun ? 7.4 : 4.3;
+      var slp = J.Terrain.slopeAt(P.pos.x, P.pos.z);
+      mspd *= (1 - Math.min(0.62, slp * 0.78));
       if (P.blocking) mspd *= 0.42;
       var wx = IN.mx, wz = IN.mz;
       var len = Math.hypot(wx, wz) || 1;
@@ -349,10 +351,20 @@ J.updatePlayer = function (dt, t) {
       if (P.tim > 0.06 && P.tim < 0.30) P.invuln = Math.max(P.invuln, 0.02);
     }
 
+    /* 再贴地一次（移动后） */
+    var gy2 = J.Terrain.heightAt(P.pos.x, P.pos.z);
+    if (P.pos.y < gy2) P.pos.y = gy2;
+
     /* 体力恢复 */
     if (P.state !== 'atk' && P.state !== 'dash') {
       P.stamina = Math.min(P.maxStamina, P.stamina + (P.blocking ? 9 : 26) * dt);
     }
+
+    /* 地形贴地 */
+    var gy = J.Terrain.heightAt(P.pos.x, P.pos.z);
+    P.onGround = P.pos.y <= gy + 0.35;
+    if (P.vy <= 0.01) P.pos.y = gy;
+    else { P.vy -= 26 * dt; P.pos.y += P.vy * dt; if (P.pos.y < gy) { P.pos.y = gy; P.vy = 0; } }
 
     /* 碰撞 */
     J.Col.resolve(P.pos, 0.38, 1.7, P.pos.y);

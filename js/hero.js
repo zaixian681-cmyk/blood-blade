@@ -72,20 +72,39 @@ J.Hero = (function () {
 
   /* ── 材质库 ── */
   var M = {};
+
+  /* 边缘光：让角色从背景中脱离出来（水墨剪影的关键） */
+  function rim(mat, col, power) {
+    mat.onBeforeCompile = function (sh) {
+      sh.uniforms.uRimColor = { value: new THREE.Color(col === undefined ? 0xbcd2ea : col) };
+      sh.uniforms.uRimPow = { value: power === undefined ? 0.85 : power };
+      sh.fragmentShader = 'uniform vec3 uRimColor; uniform float uRimPow;\n' + sh.fragmentShader.replace(
+        '#include <dithering_fragment>',
+        ['#include <dithering_fragment>',
+         'vec3 _vd = normalize(vViewPosition);',
+         'float _rim = pow(1.0 - abs(dot(normalize(normal), _vd)), 2.3);',
+         'gl_FragColor.rgb += uRimColor * _rim * uRimPow;'
+        ].join('\n')
+      );
+    };
+    mat.needsUpdate = true;
+    return mat;
+  }
+
   function initMats() {
     var broc = brocadeTex();
-    M.robe = new THREE.MeshStandardMaterial({ map: broc, color: 0x2a2724, roughness: 0.62, metalness: 0.28, emissive: 0x120e08, emissiveIntensity: 0.5 });
-    M.robe2 = new THREE.MeshStandardMaterial({ color: 0x1b1917, roughness: 0.7, metalness: 0.2 });
-    M.gold = new THREE.MeshStandardMaterial({ color: 0xe8c884, metalness: 1.0, roughness: 0.26, emissive: 0x5a411a, emissiveIntensity: 0.55 });
-    M.skin = new THREE.MeshStandardMaterial({ color: 0xf6e0d2, roughness: 0.62, metalness: 0.0 });
-    M.hair = new THREE.MeshStandardMaterial({ color: 0xf2eefc, roughness: 0.42, metalness: 0.12, emissive: 0x3a3550, emissiveIntensity: 0.35 });
-    M.hairD = new THREE.MeshStandardMaterial({ color: 0xdcd6f0, roughness: 0.5, metalness: 0.1, emissive: 0x2a2540, emissiveIntensity: 0.3 });
+    M.robe = rim(new THREE.MeshStandardMaterial({ map: broc, color: 0x1a1817, roughness: 0.58, metalness: 0.34, emissive: 0x0d0a06, emissiveIntensity: 0.6 }), 0xcfe0f5, 1.15);
+    M.robe2 = rim(new THREE.MeshStandardMaterial({ color: 0x141212, roughness: 0.7, metalness: 0.2 }), 0xcfe0f5, 1.05);
+    M.gold = rim(new THREE.MeshStandardMaterial({ color: 0xe8c884, metalness: 1.0, roughness: 0.26, emissive: 0x6a4d1e, emissiveIntensity: 0.7 }), 0xffe6b0, 0.7);
+    M.skin = rim(new THREE.MeshStandardMaterial({ color: 0xf0d8c8, roughness: 0.62, metalness: 0.0 }), 0xffd8c0, 0.55);
+    M.hair = rim(new THREE.MeshStandardMaterial({ color: 0xe6e2f4, roughness: 0.38, metalness: 0.14, emissive: 0x4a4468, emissiveIntensity: 0.45 }), 0xe8f0ff, 0.95);
+    M.hairD = rim(new THREE.MeshStandardMaterial({ color: 0xd2ccea, roughness: 0.46, metalness: 0.1, emissive: 0x3a3458, emissiveIntensity: 0.4 }), 0xe0e8ff, 0.85);
     M.veil = new THREE.MeshStandardMaterial({ color: 0xf0e2b4, metalness: 0.75, roughness: 0.3, emissive: 0x6a5220, emissiveIntensity: 0.7, side: THREE.DoubleSide });
     M.face = new THREE.MeshStandardMaterial({ map: faceTex(), roughness: 0.72 });
-    M.silk = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.05, transparent: true, opacity: 0.94, side: THREE.DoubleSide, emissive: 0x2a2a38, emissiveIntensity: 0.3 });
-    M.silkIn = new THREE.MeshStandardMaterial({ color: 0xd8cdf2, roughness: 0.55, transparent: true, opacity: 0.96, side: THREE.DoubleSide, emissive: 0x2a2440, emissiveIntensity: 0.35 });
+    M.silk = rim(new THREE.MeshStandardMaterial({ color: 0xeef0fa, roughness: 0.52, metalness: 0.06, transparent: true, opacity: 0.93, side: THREE.DoubleSide, emissive: 0x33384a, emissiveIntensity: 0.35 }), 0xd0e2ff, 0.9);
+    M.silkIn = rim(new THREE.MeshStandardMaterial({ color: 0xb9aed6, roughness: 0.55, transparent: true, opacity: 0.96, side: THREE.DoubleSide, emissive: 0x2a2440, emissiveIntensity: 0.35 }), 0xc8b8ff, 0.7);
     M.gem = new THREE.MeshStandardMaterial({ color: 0x8f7cff, emissive: 0x6a52ff, emissiveIntensity: 1.8, roughness: 0.2 });
-    M.tail = new THREE.MeshStandardMaterial({ color: 0xfaf7ff, roughness: 0.72, metalness: 0.02, emissive: 0x3a3550, emissiveIntensity: 0.32, transparent: true, opacity: 0.97 });
+    M.tail = rim(new THREE.MeshStandardMaterial({ color: 0xf2eefc, roughness: 0.72, metalness: 0.02, emissive: 0x45405e, emissiveIntensity: 0.38, transparent: true, opacity: 0.97 }), 0xdfe8ff, 0.8);
   }
 
   function box(w, h, d, mat, x, y, z) {
@@ -196,9 +215,9 @@ J.Hero = (function () {
     var hairG = new THREE.Group(); head.add(hairG);
     H.hair = hairG;
     // 头盖
-    hairG.add(sph(0.104, M.hair, 0, 0.100, -0.010, 1.03, 1.00, 1.01));
+    hairG.add(sph(0.101, M.hair, 0, 0.098, -0.014, 1.02, 0.99, 0.99));
     // 后脑发块
-    var backHair = sph(0.098, M.hair, 0, 0.062, -0.050, 1.0, 1.02, 0.88); hairG.add(backHair);
+    var backHair = sph(0.094, M.hair, 0, 0.055, -0.048, 1.0, 1.05, 0.82); hairG.add(backHair);
     // 刘海（分片）
     for (var f = -2; f <= 2; f++) {
       var strand = box(0.036, 0.085, 0.020, M.hair, f * 0.036, 0.135, 0.078);
@@ -348,7 +367,7 @@ J.Hero = (function () {
     var arc = (Math.PI * 2 - gap) / NP;   // 每片弧度
     for (var pi2 = 0; pi2 < NP; pi2++) {
       var a0 = Math.PI + gap / 2 + pi2 * arc;
-      var geo = new THREE.CylinderGeometry(0.150, 0.325, 0.88, 4, 1, true, a0, arc * 0.99);
+      var geo = new THREE.CylinderGeometry(0.145, 0.262, 0.88, 4, 1, true, a0, arc * 0.99);
       var m = new THREE.Mesh(geo, M.silk);
       m.position.y = -0.44;
       m.castShadow = true; m.receiveShadow = true;
@@ -358,7 +377,7 @@ J.Hero = (function () {
     // 后摆拖地（更长的一层）
     for (var bkk = 0; bkk < 4; bkk++) {
       var b0 = Math.PI + gap / 2 + (NP - 4) * arc + bkk * arc;
-      var g2 = new THREE.CylinderGeometry(0.32, 0.46, 0.30, 3, 1, true, b0, arc * 0.95);
+      var g2 = new THREE.CylinderGeometry(0.26, 0.36, 0.28, 3, 1, true, b0, arc * 0.95);
       var m2 = new THREE.Mesh(g2, M.silk);
       m2.position.y = -0.90;
       skirt.add(m2);
@@ -389,7 +408,7 @@ J.Hero = (function () {
     var tailSegs = [];
     var prev = tailRoot;
     var segLens = [0.17, 0.16, 0.15, 0.135, 0.115, 0.09];
-    var segW = [0.088, 0.098, 0.094, 0.082, 0.063, 0.040];
+    var segW = [0.085, 0.096, 0.092, 0.079, 0.058, 0.032];
     for (var ts2 = 0; ts2 < 6; ts2++) {
       var seg = new THREE.Group();
       var r = segW[ts2];
@@ -407,7 +426,7 @@ J.Hero = (function () {
         seg.add(tuft);
       }
       if (ts2 === 0) seg.position.set(0, 0, 0);
-      else seg.position.set(0, 0, -segLens[ts2 - 1] * 0.92);
+      else seg.position.set(0, 0, -segLens[ts2 - 1] * 0.74);
       prev.add(seg);
       tailSegs.push(seg);
       prev = seg;

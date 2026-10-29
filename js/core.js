@@ -44,11 +44,11 @@ J.initRenderer = function () {
   r.shadowMap.type = THREE.PCFSoftShadowMap;
   r.outputColorSpace = THREE.SRGBColorSpace;
   r.toneMapping = THREE.ACESFilmicToneMapping;
-  r.toneMappingExposure = 0.95;
+  r.toneMappingExposure = 1.02;
   J.R = r;
 
   var sc = new THREE.Scene();
-  sc.fog = new THREE.FogExp2(0xb8ac96, 0.0042);
+  sc.fog = new THREE.FogExp2(0xbcccd6, 0.0021);
   J.S = sc;
 
   var cam = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 900);
@@ -69,19 +69,25 @@ J.onResize = function () {
 J.buildSky = function (topCol, midCol, botCol) {
   var geo = new THREE.SphereGeometry(600, 24, 16);
   var mat = new THREE.ShaderMaterial({
-    side: THREE.BackSide, depthWrite: false, fog: false,
+    side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: false,
     uniforms: {
       cTop: { value: new THREE.Color(topCol) },
       cMid: { value: new THREE.Color(midCol) },
-      cBot: { value: new THREE.Color(botCol) }
+      cBot: { value: new THREE.Color(botCol) },
+      cSun: { value: new THREE.Color(0xffd9a0) },
+      sunDir: { value: new THREE.Vector3(0.66, 0.26, -0.70).normalize() }
     },
     vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
     fragmentShader: [
-      'uniform vec3 cTop,cMid,cBot; varying vec3 vP;',
+      'uniform vec3 cTop,cMid,cBot,cSun,sunDir; varying vec3 vP;',
       'void main(){',
-      '  float h = normalize(vP).y;',
-      '  vec3 c = mix(cBot, cMid, smoothstep(-0.12, 0.22, h));',
-      '  c = mix(c, cTop, smoothstep(0.18, 0.75, h));',
+      '  vec3 dir = normalize(vP);',
+      '  float h = dir.y;',
+      '  vec3 c = mix(cBot, cMid, smoothstep(-0.10, 0.20, h));',
+      '  c = mix(c, cTop, smoothstep(0.16, 0.72, h));',
+      '  float d = max(0.0, dot(dir, normalize(sunDir)));',
+      '  c += cSun * pow(d, 7.0) * 0.95;',
+      '  c += cSun * pow(d, 60.0) * 1.6;',
       '  gl_FragColor = vec4(c, 1.0);',
       '}'
     ].join('\n')
@@ -96,17 +102,17 @@ J.buildSky = function (topCol, midCol, botCol) {
 
 /* ── 光照：斜阳低角度，长影子，最有武侠味 ── */
 J.initLights = function () {
-  var hemi = new THREE.HemisphereLight(0xa8c0d8, 0x50422f, 0.72);
+  var hemi = new THREE.HemisphereLight(0x9fb4c4, 0x40382c, 0.62);
   J.S.add(hemi);
 
-  var sun = new THREE.DirectionalLight(0xffcf96, 1.75);
-  sun.position.set(-46, 58, 34);
+  var sun = new THREE.DirectionalLight(0xffc48a, 2.15);
+  sun.position.set(130, 52, -150);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  var s = 62;
+  var s = 92;
   sun.shadow.camera.left = -s; sun.shadow.camera.right = s;
   sun.shadow.camera.top = s; sun.shadow.camera.bottom = -s;
-  sun.shadow.camera.near = 1; sun.shadow.camera.far = 220;
+  sun.shadow.camera.near = 20; sun.shadow.camera.far = 400;
   sun.shadow.bias = -0.0009;
   sun.shadow.normalBias = 0.035;
   J.S.add(sun);
@@ -122,7 +128,7 @@ J.initLights = function () {
 J.updateSun = function (px, pz) {
   var sun = J.sun; if (!sun) return;
   sun.target.position.set(px, 0, pz);
-  sun.position.set(px - 46, 58, pz + 34);
+  sun.position.set(px + 130, 52, pz - 150);
   sun.target.updateMatrixWorld();
 };
 /* ═══ 几何合并器 ═══ 把成百上千个方块压成一个网格 */
