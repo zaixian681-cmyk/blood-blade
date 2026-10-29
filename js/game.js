@@ -16,6 +16,7 @@ J.boot = function () {
     J.initLights();
     J.Col.reset();
     J.World.build();
+    if (J.Art) J.Art.init();
     if (J.Amb) J.Amb.init();
     J.initInput();
     J.initPlayer();
@@ -1147,6 +1148,7 @@ J.startLoop = function () {
       J.updateSlash(dt);
       J.World.update(dt, J.clock, J.P.pos);
       if (J.Amb) J.Amb.update(dt, J.clock, J.P.pos);
+      if (J.Art) J.Art.update(dt);
       if (J.Cine) J.Cine.update(raw);
       J.updateCamera(raw);
       J.Interact.update(dt, J.P.pos);

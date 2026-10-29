@@ -228,6 +228,12 @@ J.World = (function () {
       B.box(wx2, y0 + 2.08, fz + front * 0.05, winW + 0.16, 0.1, 0.12, C.woodD);
     }
 
+    /* ── 檐下椽板：木色，避免从下方看屋顶一片发黑 ── */
+    B.box(cx, wy + 0.06, cz, w + 1.1, 0.14, d + 1.1, C.woodL);
+    for (var ra = 0; ra < Math.floor(w / 0.7); ra++) {
+      B.box(cx - w / 2 + 0.35 + ra * 0.7, wy + 0.18, cz, 0.1, 0.12, d + 1.2, C.woodD);
+    }
+
     /* ── 屋顶 ── */
     var roofH = opt.roofH || Math.max(1.35, d * 0.34);
     roof(cx, wy + 0.1, cz, w, d, roofH, C.tile, C.tileD);
@@ -557,6 +563,15 @@ J.World = (function () {
     }
     B.box(dx + 7, 10.6, dz, 17, 0.20, 4.0, C.woodL);
     J.Col.add(dx - 1, 10.2, dz - 2, dx + 16, 10.8, dz + 2, 'ground');
+
+    /* 客栈与茶馆：镇中体量最大的两栋，正对主街 */
+    var rx2 = J.Terrain.riverX(70);
+    house(rx2 - 21, 70, 11.5, 9.0, 4.6, { front: 1, roofH: 2.6, shop: true, shopSide: 1, bannerCol: 0xb03a2a });
+    house(rx2 + 23, 58, 10.0, 8.4, 4.2, { front: -1, roofH: 2.4, shop: true, shopSide: -1, bannerCol: 0x2f5a86 });
+    /* 客栈后院围墙 */
+    for (var cw = 0; cw < 8; cw++) {
+      B.boxB(rx2 - 26 + cw * 1.3, hAt(rx2 - 26 + cw * 1.3, 78), 78, 1.28, 2.0, 0.42, C.wall);
+    }
 
     /* 主街灯笼（两岸各一排，挂在屋檐口的高度） */
     for (var L = 0; L < 9; L++) {
