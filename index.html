@@ -155,6 +155,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
   display:none;box-shadow:inset 0 0 0 2px rgba(255,220,150,.85),0 0 22px rgba(255,190,90,.6)}
 #bUse.on{display:flex}
 
+/* 小地图 */
+#minimapWrap{position:absolute;right:14px;top:12px;width:112px;height:112px;
+  pointer-events:auto;transition:all .22s;filter:drop-shadow(0 3px 10px rgba(0,0,0,.6))}
+#minimapWrap.big{right:50%;top:50%;transform:translate(50%,-50%);width:300px;height:300px;z-index:40}
+#minimap{width:100%;height:100%;display:block;border-radius:10px}
+
 /* 横屏提示 */
 #rotateTip{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
   z-index:60;pointer-events:none;background:rgba(0,0,0,.76);text-align:center;
@@ -191,6 +197,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
   <div id="interactHint"></div>
   <div id="regionBanner"></div>
   <div id="objList"></div>
+  <div id="minimapWrap"><canvas id="minimap" width="112" height="112"></canvas></div>
 
   <div id="joy"></div>
   <div id="acts">
@@ -212,20 +219,21 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 <div id="err"></div>
 
 <script src="js/three.min.js"></script>
-<script src="js/core.js?v=97"></script>
-<script src="js/terrain.js?v=97"></script>
-<script src="js/world.js?v=97"></script>
-<script src="js/fx.js?v=97"></script>
-<script src="js/slash.js?v=97"></script>
-<script src="js/weapon.js?v=97"></script>
-<script src="js/weapons.js?v=97"></script>
-<script src="js/combat.js?v=97"></script>
-<script src="js/hero.js?v=97"></script>
-<script src="js/foe.js?v=97"></script>
-<script src="js/interact.js?v=97"></script>
-<script src="js/objectives.js?v=97"></script>
-<script src="js/ui.js?v=97"></script>
-<script src="js/game.js?v=97"></script>
+<script src="js/core.js?v=100"></script>
+<script src="js/terrain.js?v=100"></script>
+<script src="js/world.js?v=100"></script>
+<script src="js/fx.js?v=100"></script>
+<script src="js/slash.js?v=100"></script>
+<script src="js/weapon.js?v=100"></script>
+<script src="js/weapons.js?v=100"></script>
+<script src="js/combat.js?v=100"></script>
+<script src="js/hero.js?v=100"></script>
+<script src="js/foe.js?v=100"></script>
+<script src="js/interact.js?v=100"></script>
+<script src="js/objectives.js?v=100"></script>
+<script src="js/minimap.js?v=100"></script>
+<script src="js/ui.js?v=100"></script>
+<script src="js/game.js?v=100"></script>
 <script>
 J.showRotateTip = function () {
   var el = document.getElementById('rotateTip');

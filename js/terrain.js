@@ -145,6 +145,43 @@ J.Terrain = (function () {
     return t;
   }
 
+  /* ── 由高度场生成法线贴图（提升表面质感的关键） ── */
+  function normalMapFromHeight(size, hFn, strength) {
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    var g = cv.getContext('2d');
+    var img = g.createImageData(size, size);
+    var d = img.data;
+    var e = 1 / size;
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) {
+        var u = x / size, v = y / size;
+        var hL = hFn(u - e, v), hR = hFn(u + e, v);
+        var hD = hFn(u, v - e), hU = hFn(u, v + e);
+        var dx = (hR - hL) * strength;
+        var dy = (hU - hD) * strength;
+        /* 归一化 (dx, dy, 1) */
+        var nx = -dx, ny = -dy, nz = 1.0;
+        var len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+        nx /= len; ny /= len; nz /= len;
+        var k = (y * size + x) * 4;
+        d[k] = (nx * 0.5 + 0.5) * 255;
+        d[k + 1] = (ny * 0.5 + 0.5) * 255;
+        d[k + 2] = (nz * 0.5 + 0.5) * 255;
+        d[k + 3] = 255;
+      }
+    }
+    g.putImageData(img, 0, 0);
+    var t = new THREE.CanvasTexture(cv);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return t;
+  }
+
+  /* 土石地表的高度场：多尺度噪声 */
+  function soilHeight(u, v) {
+    return fbm(u * 22, v * 22, 4) * 0.6 + fbm(u * 70, v * 70, 3) * 0.3 + fbm(u * 180, v * 180, 2) * 0.1;
+  }
+
   /* ── 地形网格 ── */
   function buildMesh() {
     var n = SEG + 1, step = SIZE / SEG;
@@ -212,9 +249,13 @@ J.Terrain = (function () {
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     g.setIndex(new THREE.BufferAttribute(idx, 1));
     g.computeVertexNormals();
+    var gNormal = normalMapFromHeight(256, soilHeight, 7.0);
+    gNormal.repeat.set(38, 38);
     var gmat = new THREE.MeshStandardMaterial({
-      vertexColors: true, roughness: 0.95, metalness: 0,
-      map: groundTexture()
+      vertexColors: true, roughness: 0.94, metalness: 0,
+      map: groundTexture(),
+      normalMap: gNormal,
+      normalScale: new THREE.Vector2(0.85, 0.85)
     });
     var mesh = new THREE.Mesh(g, gmat);
     mesh.receiveShadow = true;

@@ -24,6 +24,7 @@ J.boot = function () {
     J.UI.init();
     if (J.Obj) J.Obj.init();
     if (J.World.placeInteractables) J.World.placeInteractables();
+    if (J.Minimap) J.Minimap.init();
     J.startLoop();
     setTimeout(function () { bootEl.classList.add('gone'); }, 260);
   } catch (e) {
@@ -1067,6 +1068,7 @@ J.startLoop = function () {
       J.Interact.update(dt, J.P.pos);
       J.Obj.update(dt, J.P);
       J.UI.update(raw);
+      J.Minimap.update(dt, J.P);
       J.updateSun(J.P.pos.x, J.P.pos.z);
       J.sky.position.copy(J.C.position);
     } catch (e) {

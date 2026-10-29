@@ -91,20 +91,42 @@ J.World = (function () {
     var over = 0.75, halfD = d / 2 + over;
     var slope = Math.sqrt(halfD * halfD + h * h), ang = Math.atan2(h, halfD);
     var pw = w + over * 2;
+
+    /* 每一坡：底层薄板 + 逐片瓦 */
     for (var s = -1; s <= 1; s += 2) {
       var ox = Math.sin(ry) * s * halfD / 2, oz = Math.cos(ry) * s * halfD / 2;
-      B.box(x + ox, yb + h / 2, z + oz, pw, 0.24, slope, col, { rx: s * ang, ry: ry });
-      var ribs = Math.max(3, Math.round(pw / 1.0));
-      for (var r = 0; r < ribs; r++) {
-        var off = -pw / 2 + (r + 0.5) * (pw / ribs);
-        B.box(x + ox + Math.cos(ry) * off, yb + h / 2 + 0.10, z + oz - Math.sin(ry) * off,
-          0.09, 0.11, slope * 0.96, ridgeCol, { rx: s * ang, ry: ry });
+      /* 底板（防止透光） */
+      B.box(x + ox, yb + h / 2 - 0.06, z + oz, pw, 0.12, slope, col, { rx: s * ang, ry: ry });
+
+      /* 瓦片阵列：沿坡面分 5 排，每排横向分若干列 */
+      var rows = 5;
+      var cols = Math.max(3, Math.round(pw / 0.62));
+      for (var r = 0; r < rows; r++) {
+        var tr = (r + 0.5) / rows;                    // 0=檐口 1=屋脊
+        var along = (tr - 0.5) * slope;                // 沿坡面位移
+        /* 局部坐标 → 世界 */
+        var lx = 0, ly = Math.cos(ang) * along, lz = -s * Math.sin(ang) * along;
+        for (var c = 0; c < cols; c++) {
+          var tx = -pw / 2 + (c + 0.5) * (pw / cols);
+          /* 横向位置随 ry 旋转 */
+          var wx = x + ox + Math.cos(ry) * tx;
+          var wz = z + oz - Math.sin(ry) * tx;
+          var wy = yb + h / 2 + ly;
+          /* 每片瓦：微微起翘的薄片 */
+          B.box(wx + Math.sin(ry) * lz * 0, wy, wz + Math.cos(ry) * lz,
+            pw / cols * 0.94, 0.10, slope / rows * 1.12,
+            (r % 2 === 0) ? col : ridgeCol,
+            { rx: s * ang, ry: ry, tint: 0.88 + ((r * 7 + c * 3) % 5) * 0.035 });
+        }
       }
     }
-    B.box(x, yb + h + 0.10, z, pw + 0.2, 0.24, 0.42, ridgeCol, { ry: ry });
+
+    /* 屋脊压顶 */
+    B.box(x, yb + h + 0.12, z, pw + 0.24, 0.26, 0.46, ridgeCol, { ry: ry });
+    /* 翘角 */
     for (var e = -1; e <= 1; e += 2) {
-      B.box(x + Math.cos(ry) * e * pw / 2, yb + h + 0.28, z - Math.sin(ry) * e * pw / 2,
-        0.65, 0.16, 0.5, ridgeCol, { ry: ry, rz: e * 0.26 });
+      B.box(x + Math.cos(ry) * e * pw / 2, yb + h + 0.30, z - Math.sin(ry) * e * pw / 2,
+        0.72, 0.18, 0.54, ridgeCol, { ry: ry, rz: e * 0.28 });
     }
   }
 
@@ -786,8 +808,34 @@ J.World = (function () {
     btex.wrapS = btex.wrapT = THREE.RepeatWrapping;
     btex.repeat.set(0.35, 0.35);
 
+    /* 建筑表面法线：模拟瓦楞 / 灰泥 / 木纹的微起伏 */
+    var bnc = document.createElement('canvas'); bnc.width = bnc.height = 256;
+    var bx2 = bnc.getContext('2d');
+    var bimg = bx2.createImageData(256, 256);
+    var bdd = bimg.data;
+    for (var by = 0; by < 256; by++) {
+      for (var bxx = 0; bxx < 256; bxx++) {
+        /* 横向瓦楞 + 细噪 */
+        var wave = Math.sin(bxx * 0.30) * 0.5 + Math.sin(by * 0.12) * 0.3 + Math.random() * 0.2;
+        var dxn = Math.cos(bxx * 0.30) * 0.55;
+        var dyn = Math.cos(by * 0.12) * 0.35 + Math.random() * 0.1;
+        var nx3 = -dxn, ny3 = -dyn, nz3 = 1.0;
+        var l3 = Math.sqrt(nx3 * nx3 + ny3 * ny3 + nz3 * nz3) || 1;
+        var kk = (by * 256 + bxx) * 4;
+        bdd[kk] = (nx3 / l3 * 0.5 + 0.5) * 255;
+        bdd[kk + 1] = (ny3 / l3 * 0.5 + 0.5) * 255;
+        bdd[kk + 2] = (nz3 / l3 * 0.5 + 0.5) * 255;
+        bdd[kk + 3] = 255;
+      }
+    }
+    bx2.putImageData(bimg, 0, 0);
+    var bnorm = new THREE.CanvasTexture(bnc);
+    bnorm.wrapS = bnorm.wrapT = THREE.RepeatWrapping;
+    bnorm.repeat.set(0.28, 0.28);
+
     var mat = new THREE.MeshStandardMaterial({
-      vertexColors: true, roughness: 0.92, metalness: 0.02, map: btex
+      vertexColors: true, roughness: 0.90, metalness: 0.02, map: btex,
+      normalMap: bnorm, normalScale: new THREE.Vector2(0.75, 0.75)
     });
     var mesh = B.build(mat);
     mesh.name = 'mapMesh';
