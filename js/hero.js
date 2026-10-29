@@ -65,6 +65,16 @@ J.Hero = (function () {
     // 鼻
     x.fillStyle = 'rgba(190,150,140,.35)';
     x.beginPath(); x.ellipse(64, 88, 2.6, 2, 0, 0, 7); x.fill();
+
+    /* 边缘羽化：让脸"融"进头部，而不是一块贴纸 */
+    x.globalCompositeOperation = 'destination-in';
+    var g3 = x.createRadialGradient(64, 66, 18, 64, 66, 66);
+    g3.addColorStop(0, 'rgba(0,0,0,1)');
+    g3.addColorStop(0.62, 'rgba(0,0,0,1)');
+    g3.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g3; x.fillRect(0, 0, 128, 128);
+    x.globalCompositeOperation = 'source-over';
+
     var t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
@@ -100,7 +110,7 @@ J.Hero = (function () {
     M.hair = rim(new THREE.MeshStandardMaterial({ color: 0xe6e2f4, roughness: 0.38, metalness: 0.14, emissive: 0x4a4468, emissiveIntensity: 0.45 }), 0xe8f0ff, 0.95);
     M.hairD = rim(new THREE.MeshStandardMaterial({ color: 0xd2ccea, roughness: 0.46, metalness: 0.1, emissive: 0x3a3458, emissiveIntensity: 0.4 }), 0xe0e8ff, 0.85);
     M.veil = new THREE.MeshStandardMaterial({ color: 0xf0e2b4, metalness: 0.75, roughness: 0.3, emissive: 0x6a5220, emissiveIntensity: 0.7, side: THREE.DoubleSide });
-    M.face = new THREE.MeshStandardMaterial({ map: faceTex(), roughness: 0.72 });
+    M.face = new THREE.MeshStandardMaterial({ map: faceTex(), roughness: 0.72, transparent: true, depthWrite: false });
     M.silk = rim(new THREE.MeshStandardMaterial({ color: 0xd4d8e6, roughness: 0.54, metalness: 0.06, transparent: true, opacity: 0.9, side: THREE.DoubleSide, emissive: 0x2a2f40, emissiveIntensity: 0.3 }), 0xc8daf5, 0.85);
     M.silkIn = rim(new THREE.MeshStandardMaterial({ color: 0x6e6a8c, roughness: 0.58, transparent: true, opacity: 0.97, side: THREE.DoubleSide, emissive: 0x201c32, emissiveIntensity: 0.3 }), 0x9a90c0, 0.6);
     M.gem = new THREE.MeshStandardMaterial({ color: 0x8f7cff, emissive: 0x6a52ff, emissiveIntensity: 1.8, roughness: 0.2 });
@@ -162,7 +172,7 @@ J.Hero = (function () {
     // 胸
     var chest = new THREE.Group(); chest.position.y = 0.28; torso.add(chest);
     H.chest = chest;
-    var ch = box(0.255, 0.20, 0.165, M.robe, 0, 0.045, 0); chest.add(ch);
+    var ch = box(0.226, 0.195, 0.152, M.robe, 0, 0.045, 0); chest.add(ch);
     // 胸型与肩部斜面
     chest.add(sph(0.062, M.robe, -0.058, 0.062, 0.070, 1.0, 0.85, 0.75));
     chest.add(sph(0.062, M.robe, 0.058, 0.062, 0.070, 1.0, 0.85, 0.75));
@@ -184,8 +194,14 @@ J.Hero = (function () {
     H.head = head;
     var skull = sph(0.098, M.skin, 0, 0.088, 0, 1, 1.10, 0.96); head.add(skull);
     // 面部平面
-    var faceM = new THREE.Mesh(new THREE.PlaneGeometry(0.155, 0.185), M.face);
-    faceM.position.set(0, 0.072, 0.0975); head.add(faceM);
+    (function () {
+      var geo = new THREE.SphereGeometry(0.100, 22, 18, Math.PI - 0.72, 1.44, 0.70, 1.30);
+      var m = new THREE.Mesh(geo, M.face);
+      m.position.set(0, 0.088, 0);
+      m.scale.set(1, 1.06, 1);
+      m.renderOrder = 3;
+      head.add(m);
+    })();
     // 下巴
     var chin = sph(0.062, M.skin, 0, 0.02, 0.012, 1, 0.8, 0.95); head.add(chin);
     // 耳
@@ -215,15 +231,53 @@ J.Hero = (function () {
     var hairG = new THREE.Group(); head.add(hairG);
     H.hair = hairG;
     // 头盖
-    hairG.add(sph(0.101, M.hair, 0, 0.098, -0.014, 1.02, 0.99, 0.99));
+    hairG.add(sph(0.099, M.hair, 0, 0.101, -0.022, 1.00, 0.94, 0.95));
     // 后脑发块
-    var backHair = sph(0.094, M.hair, 0, 0.055, -0.048, 1.0, 1.05, 0.82); hairG.add(backHair);
+    var backHair = sph(0.090, M.hair, 0, 0.058, -0.052, 0.98, 1.02, 0.78); hairG.add(backHair);
     // 刘海（分片）
     for (var f = -2; f <= 2; f++) {
       var strand = box(0.036, 0.085, 0.020, M.hair, f * 0.036, 0.135, 0.078);
       strand.rotation.z = f * 0.12; strand.rotation.x = -0.18;
       hairG.add(strand);
     }
+    // 额前碎发（增加发丝层次）
+    for (var ms = 0; ms < 7; ms++) {
+      var mx = (ms - 3) * 0.026;
+      var ml = 0.10 + Math.random() * 0.09;
+      var strand3 = box(0.019, ml, 0.012, ms % 2 ? M.hair : M.hairD, mx, 0.108 - ml * 0.42, 0.088);
+      strand3.rotation.z = (ms - 3) * 0.10;
+      strand3.rotation.x = -0.24;
+      hairG.add(strand3);
+    }
+
+    // 两侧鬓发
+    for (var sd = -1; sd <= 1; sd += 2) {
+      var side = box(0.030, 0.26, 0.045, M.hairD, sd * 0.098, 0.0, 0.015);
+      side.rotation.z = sd * 0.05;
+      hairG.add(side);
+      var side2 = box(0.024, 0.20, 0.036, M.hair, sd * 0.105, -0.11, -0.01);
+      side2.rotation.z = sd * 0.08;
+      hairG.add(side2);
+    }
+    // 及腰长发：18 缕环绕后脑，宽窄不一
+    H.longHair = [];
+    var HAIRN = 18;
+    for (var hi = 0; hi < HAIRN; hi++) {
+      var u = hi / (HAIRN - 1);              // 0..1
+      var angH = -Math.PI * 0.78 + u * Math.PI * 1.56;   // 环绕后脑
+      var radH = 0.082 + Math.sin(u * Math.PI) * 0.012;
+      var hx2 = Math.sin(angH) * radH;
+      var hz2 = -Math.cos(angH) * radH * 0.92;
+      var hl = 0.44 + Math.sin(u * Math.PI) * 0.16 + Math.random() * 0.05;
+      var wid = 0.020 + Math.random() * 0.012;
+      var strand2 = box(wid, hl, 0.026, hi % 3 === 0 ? M.hairD : M.hair,
+        hx2, 0.075 - hl / 2, hz2);
+      strand2.rotation.x = 0.06 + Math.abs(u - 0.5) * 0.10;
+      strand2.rotation.z = (u - 0.5) * 0.24;
+      hairG.add(strand2);
+      H.longHair.push(strand2);
+    }
+
     // 额前碎发（增加发丝层次）
     for (var ms = 0; ms < 7; ms++) {
       var mx = (ms - 3) * 0.026;
@@ -258,8 +312,12 @@ J.Hero = (function () {
     // 高发髻（大）
     var bun = new THREE.Group(); bun.position.set(0, 0.172, -0.012); hairG.add(bun);
     H.bun = bun;
-    bun.add(sph(0.050, M.hair, 0, 0, 0, 1, 0.90, 1));
-    bun.add(sph(0.034, M.hair, 0, 0.046, -0.004, 1, 0.82, 1));
+    bun.add(sph(0.048, M.hair, 0, 0, 0, 1.06, 0.88, 1.02));
+    bun.add(sph(0.032, M.hair, 0, 0.044, -0.004, 1, 0.80, 1));
+    // 束发金环
+    var bunRing = new THREE.Mesh(new THREE.TorusGeometry(0.040, 0.0052, 6, 16), M.gold);
+    bunRing.rotation.x = Math.PI / 2; bunRing.position.y = -0.028;
+    bun.add(bunRing);
     // 发冠：银色莲瓣
     var crown = new THREE.Group(); crown.position.set(0, 0.072, 0); bun.add(crown);
     for (var pI = 0; pI < 6; pI++) {
@@ -377,28 +435,30 @@ J.Hero = (function () {
     var arc = (Math.PI * 2 - gap) / NP;   // 每片弧度
     for (var pi2 = 0; pi2 < NP; pi2++) {
       var a0 = Math.PI + gap / 2 + pi2 * arc;
-      var geo = new THREE.CylinderGeometry(0.132, 0.228, 0.90, 4, 1, true, a0, arc * 0.99);
+      var geo = new THREE.CylinderGeometry(0.118, 0.208, 0.68, 4, 1, true, a0, arc * 0.99);
       var m = new THREE.Mesh(geo, M.silk);
-      m.position.y = -0.44;
+      m.scale.z = 0.74;                       // 压扁成椭圆，贴合人体
+      m.position.y = -0.34;
       m.castShadow = true; m.receiveShadow = true;
       skirt.add(m);
-      panels.push({ m: m, base: m.rotation.x, ph: pi2 * 0.7, a: a0 + arc / 2, y: m.position.y });
+      panels.push({ m: m, base: 0, ph: pi2 * 0.7, a: a0 + arc / 2, y: m.position.y });
     }
     // 后摆拖地（更长的一层）
     for (var bkk = 0; bkk < 4; bkk++) {
       var b0 = Math.PI + gap / 2 + (NP - 4) * arc + bkk * arc;
-      var g2 = new THREE.CylinderGeometry(0.225, 0.30, 0.26, 3, 1, true, b0, arc * 0.95);
+      var g2 = new THREE.CylinderGeometry(0.176, 0.235, 0.24, 3, 1, true, b0, arc * 0.95);
       var m2 = new THREE.Mesh(g2, M.silk);
-      m2.position.y = -0.90;
+      m2.position.y = -0.78;
       skirt.add(m2);
       panels.push({ m: m2, base: 0, ph: bkk * 1.3, a: b0, y: -0.90 });
     }
     // 内层短裙（到大腿，形成层次）
     var shortSkirt = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.140, 0.200, 0.40, 20, 1, true),
+      new THREE.CylinderGeometry(0.126, 0.156, 0.40, 20, 1, true),
       M.silkIn
     );
-    shortSkirt.position.y = -0.19;
+    shortSkirt.scale.z = 0.78;
+    shortSkirt.position.y = -0.18;
     shortSkirt.castShadow = true;
     skirt.add(shortSkirt);
 
@@ -420,42 +480,6 @@ J.Hero = (function () {
     }
 
     /* ── 白尾（蓬松，从腰后下方伸出，向上卷） ── */
-    var tailRoot = new THREE.Group();
-    tailRoot.position.set(0, 0.86, -0.24);
-    squash.add(tailRoot);
-    H.tailRoot = tailRoot;
-    var tailSegs = [];
-    var prev = tailRoot;
-    var segLens = [0.13, 0.12, 0.11, 0.10, 0.085, 0.07];
-    var segW = [0.085, 0.096, 0.092, 0.079, 0.058, 0.032];
-    for (var ts2 = 0; ts2 < 6; ts2++) {
-      var seg = new THREE.Group();
-      var r = segW[ts2];
-      // 椭球主体（连贯，不是珠子）
-      var blob2 = sph(r, M.tail, 0, 0, -segLens[ts2] * 0.5, 1.0, 1.06, (segLens[ts2] * 1.28) / r);
-      seg.add(blob2);
-      // 表面绒毛（细碎尖角，制造蓬松感）
-      for (var tu = 0; tu < 10; tu++) {
-        var ta = Math.random() * 6.283, te = (Math.random() - 0.5) * 2.2;
-        var tr = r * (0.95 + Math.random() * 0.25);
-        var tuft = new THREE.Mesh(new THREE.ConeGeometry(r * 0.26, r * 0.62, 4), M.tail);
-        tuft.position.set(Math.cos(ta) * tr * 0.75, Math.sin(te) * tr * 0.7, -segLens[ts2] * 0.5 + Math.cos(te) * tr * 0.5);
-        tuft.rotation.set(te + 1.5, ta, Math.random());
-        tuft.castShadow = true;
-        seg.add(tuft);
-      }
-      if (ts2 === 0) seg.position.set(0, 0, 0);
-      else seg.position.set(0, 0, -segLens[ts2 - 1] * 0.74);
-      prev.add(seg);
-      tailSegs.push(seg);
-      prev = seg;
-    }
-    // 整体向下垂：绕 X 负角度
-    tailRoot.rotation.x = -1.18;
-    // 末端上卷
-    for (var cu = 4; cu < 6; cu++) tailSegs[cu].rotation.x = 0.22;
-    H.tailSegs = tailSegs;
-
     /* 光源：角色身上一点冷光，凸显玉刀 */
     var charLight = new THREE.PointLight(0xb9c8ff, 0.55, 3.4, 2);
     charLight.position.set(0, 1.1, 0.2);

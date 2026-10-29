@@ -151,8 +151,8 @@ J.updateSlash = function (dt) {
     }
     if (show) {
       w.updateWorldMatrix(true, false);
-      var tip = new THREE.Vector3(0.55, 1.42, 0).applyMatrix4(w.matrixWorld);
-      var base = new THREE.Vector3(0.24, 0.96, 0).applyMatrix4(w.matrixWorld);
+      var tip = new THREE.Vector3(0.42, 1.04, 0).applyMatrix4(w.matrixWorld);
+      var base = new THREE.Vector3(0.18, 0.70, 0).applyMatrix4(w.matrixWorld);
       /* 外晕：沿刀刃方向两端各外扩，形成更宽更淡的第二层 */
       var dirv = tip.clone().sub(base);
       var dl = dirv.length() || 1;
@@ -470,7 +470,7 @@ J.animatePlayer = function (dt, t) {
     headX: 0, headY: 0,
     legL: 0, legR: 0, kneeL: 0, kneeR: 0,
     hipsY: 0.86, hipsRotY: 0, squat: 0,
-    wpnRotX: 1.72, wpnRotZ: 0.15, wpnRotY: 0
+    wpnRotX: 0.57, wpnRotZ: 0.15, wpnRotY: 0
   };
 
   var swing = Math.sin(P.walkPhase);
@@ -498,7 +498,7 @@ J.animatePlayer = function (dt, t) {
       tgt.arX = -1.15; tgt.arZ = -0.35; tgt.arEl = -1.25;
       tgt.alX = -1.05; tgt.alZ = 0.55; tgt.alEl = -1.15;
       tgt.torsoX = -0.10; tgt.headX = 0.06;
-      tgt.wpnRotX = 1.25; tgt.wpnRotZ = 0.0;
+      tgt.wpnRotX = 0.10; tgt.wpnRotZ = 0.0;
     }
   } else if (st === 'atk') {
     var M = P.move;
@@ -521,7 +521,7 @@ J.animatePlayer = function (dt, t) {
       tgt.torsoY = -1.05 * windP + 1.95 * strikeP;
       tgt.torsoX = -0.10 * windP + 0.34 * strikeP;
       tgt.hipsRotY = -0.45 * windP + 0.80 * strikeP;
-      tgt.wpnRotX = 1.35 + 0.45 * windP - 0.30 * strikeP;
+      tgt.wpnRotX = 0.20 + 0.45 * windP - 0.30 * strikeP;
       tgt.squat = 0.05 * windP;
       tgt.legL = 0.20 * windP; tgt.legR = -0.24 * windP;
       tgt.kneeL = 0.15; tgt.kneeR = 0.28 * windP;
@@ -535,7 +535,7 @@ J.animatePlayer = function (dt, t) {
       tgt.torsoY = 0.95 * windP - 1.95 * strikeP;
       tgt.torsoX = -0.06 * windP + 0.28 * strikeP;
       tgt.hipsRotY = 0.42 * windP - 0.78 * strikeP;
-      tgt.wpnRotX = 1.20 - 0.25 * windP;
+      tgt.wpnRotX = 0.05 - 0.25 * windP;
       tgt.legL = -0.18 * windP; tgt.legR = 0.22 * windP;
     } else if (anim === 'spinWide') {
       /* 回旋斩：躯干抡一整圈 */
@@ -548,7 +548,7 @@ J.animatePlayer = function (dt, t) {
       tgt.alX = -0.55 * windP;
       tgt.alZ = 0.85;
       tgt.torsoX = 0.10 + 0.10 * strikeP;
-      tgt.wpnRotX = 1.45 - 0.10 * strikeP;
+      tgt.wpnRotX = 0.30 - 0.10 * strikeP;
       tgt.squat = 0.06 * windP;
     } else if (anim === 'overhead') {
       /* 竖劈：举过头顶再劈下 */
@@ -560,7 +560,7 @@ J.animatePlayer = function (dt, t) {
       tgt.torsoX = -0.32 * windP + 0.62 * strikeP;
       tgt.torsoY = 0.08 * windP - 0.10 * strikeP;
       tgt.headX = -0.12 * windP + 0.20 * strikeP;
-      tgt.wpnRotX = 1.05 + 1.15 * windP - 1.55 * strikeP;
+      tgt.wpnRotX = -0.10 + 1.15 * windP - 1.55 * strikeP;
       tgt.squat = 0.10 * windP - 0.04 * strikeP;
       tgt.kneeL = 0.22 * windP; tgt.kneeR = 0.26 * windP;
     } else if (anim === 'chargeSlash') {
@@ -574,7 +574,7 @@ J.animatePlayer = function (dt, t) {
       tgt.torsoY = -1.35 * cw2 + 2.6 * strikeP;
       tgt.torsoX = -0.22 * cw2 + 0.45 * strikeP;
       tgt.hipsRotY = -0.55 * cw2 + 1.05 * strikeP;
-      tgt.wpnRotX = 1.55 + 0.55 * cw2 - 0.35 * strikeP;
+      tgt.wpnRotX = 0.40 + 0.55 * cw2 - 0.35 * strikeP;
       tgt.squat = 0.16 * cw2 - 0.05 * strikeP;
       tgt.kneeL = 0.30 * cw2; tgt.kneeR = 0.34 * cw2;
       tgt.legL = 0.18 * cw2; tgt.legR = -0.20 * cw2;
@@ -586,7 +586,7 @@ J.animatePlayer = function (dt, t) {
       tgt.alX = 0.55 * windP - 1.55 * strikeP;
       tgt.alZ = 0.35;
       tgt.torsoX = 0.42 * windP - 0.68 * strikeP;
-      tgt.wpnRotX = -0.35 + 0.35 * windP;
+      tgt.wpnRotX = -1.50 + 0.35 * windP;
       tgt.hipsY = 0.86 - 0.14 * windP + 0.14 * strikeP;
       tgt.kneeL = 0.55 * windP; tgt.kneeR = 0.50 * windP;
     } else if (anim === 'airSlash') {
@@ -599,7 +599,7 @@ J.animatePlayer = function (dt, t) {
       tgt.torsoY = -0.85 * windP + 1.55 * strikeP;
       tgt.torsoX = 0.10 + 0.15 * strikeP;
       tgt.legL = 0.75; tgt.legR = -0.35; tgt.kneeL = 1.05;
-      tgt.wpnRotX = 1.55;
+      tgt.wpnRotX = 0.40;
       tgt.hipsY = 0.86;
     } else if (anim === 'plunge') {
       /* 下劈：空中收刀再砸下 */
@@ -609,7 +609,7 @@ J.animatePlayer = function (dt, t) {
       tgt.alX = -0.5 - 1.9 * windP + 2.9 * strikeP;
       tgt.torsoX = -0.35 * windP + 0.75 * strikeP;
       tgt.legL = 0.45; tgt.legR = -0.55; tgt.kneeL = 0.85;
-      tgt.wpnRotX = 1.0 + 1.3 * windP - 1.7 * strikeP;
+      tgt.wpnRotX = -0.15 + 1.3 * windP - 1.7 * strikeP;
       tgt.hipsY = 0.86;
     } else if (anim === 'finisherBlade') {
       /* 终结：超大幅蓄势 + 一记贯穿 */
@@ -622,7 +622,7 @@ J.animatePlayer = function (dt, t) {
       tgt.torsoY = -1.6 * fw + 3.1 * strikeP;
       tgt.torsoX = -0.28 * fw + 0.52 * strikeP;
       tgt.hipsRotY = -0.7 * fw + 1.3 * strikeP;
-      tgt.wpnRotX = 1.6 + 0.7 * fw - 0.5 * strikeP;
+      tgt.wpnRotX = 0.45 + 0.7 * fw - 0.5 * strikeP;
       tgt.squat = 0.20 * fw - 0.08 * strikeP;
       tgt.kneeL = 0.36 * fw; tgt.kneeR = 0.40 * fw;
       tgt.legL = 0.26 * fw; tgt.legR = -0.30 * fw;
@@ -656,7 +656,7 @@ J.animatePlayer = function (dt, t) {
       tgt.headX = -0.14 * k1;
       tgt.squat = 0.14 * k1;
       tgt.kneeL = 0.34 * k1; tgt.kneeR = 0.38 * k1;
-      tgt.wpnRotX = 1.1 + 1.3 * k1;
+      tgt.wpnRotX = -0.05 + 1.3 * k1;
       tgt.hipsY = 0.86 - 0.10 * k1;
     } else if (et2 < 0.29) {
       /* 一刀劈下 */
@@ -673,7 +673,7 @@ J.animatePlayer = function (dt, t) {
       tgt.squat = 0.14 + 0.10 * ease2;
       tgt.kneeL = 0.34 + 0.30 * ease2;
       tgt.kneeR = 0.38 + 0.26 * ease2;
-      tgt.wpnRotX = 2.40 - 2.10 * ease2;
+      tgt.wpnRotX = 1.25 - 2.10 * ease2;
       tgt.hipsY = 0.86 - 0.10 - 0.06 * ease2;
     } else {
       /* 收刀站定 */
@@ -705,7 +705,7 @@ J.animatePlayer = function (dt, t) {
     tgt.squat = 0.20 * cq;
     tgt.kneeL = 0.42 * cq; tgt.kneeR = 0.46 * cq;
     tgt.legL = 0.20 * cq; tgt.legR = -0.24 * cq;
-    tgt.wpnRotX = 1.05 + 1.35 * cq;
+    tgt.wpnRotX = -0.10 + 1.35 * cq;
     tgt.hipsY = 0.86 - 0.14 * cq;
   } else if (st === 'air') {
     var rising = P.vy > 0;
@@ -716,7 +716,7 @@ J.animatePlayer = function (dt, t) {
     tgt.kneeL = rising ? 1.0 : 0.45;
     tgt.kneeR = rising ? 0.55 : 0.25;
     tgt.torsoX = rising ? -0.12 : 0.14;
-    tgt.wpnRotX = 1.45;
+    tgt.wpnRotX = 0.30;
     } else if (st === 'dash') {
     var dp = P.tim / P.dashDur;
     tgt.squat = Math.sin(dp * Math.PI) * 0.22;
@@ -775,12 +775,6 @@ J.animatePlayer = function (dt, t) {
       pn.m.rotation.x = wave * 0.030 + windAmp * 0.42;
       pn.m.rotation.z = wave * 0.018;
     }
-  }
-  /* 白尾摆动 */
-  for (var i = 0; i < H.tailSegs.length; i++) {
-    var seg = H.tailSegs[i];
-    seg.rotation.y = Math.sin(t * 1.9 - i * 0.55) * (0.10 + i * 0.02);
-    seg.rotation.x = Math.sin(t * 1.5 - i * 0.5) * 0.05 + (i >= 4 ? 0.14 : 0);
   }
   /* 长发飘动 */
   if (H.longHair) {

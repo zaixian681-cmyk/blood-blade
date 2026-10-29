@@ -195,11 +195,11 @@ J.Weapon = (function () {
     return [x, y, tip];
   }
   function widthAt(t) {
-    var base = 0.070 * (0.72 + 0.46 * Math.sin(Math.min(1, t * 1.15) * Math.PI * 0.85));
+    var base = 0.0245 * (0.74 + 0.42 * Math.sin(Math.min(1, t * 1.15) * Math.PI * 0.85));
     var taper = Math.pow(1 - t, 0.72) * 0.92 + 0.06;   // 尖端收窄
-    return base * taper + 0.004;
+    return base * taper + 0.0016;
   }
-  function thickAt(t) { return 0.0145 * Math.pow(1 - t, 0.6) + 0.0022; }
+  function thickAt(t) { return 0.0062 * Math.pow(1 - t, 0.55) + 0.0011; }
 
   function buildBladeGeo(SEG) {
     var pos = [], uv = [], idx = [];
@@ -266,8 +266,8 @@ J.Weapon = (function () {
       var S = 34, pos = [], uv = [], idx = [];
       for (var i = 0; i <= S; i++) {
         var t = i / S, sp = spine(t), w = widthAt(t);
-        pos.push(sp[0], sp[1] + 0.02, w + sp[2] - 0.004);
-        pos.push(sp[0], sp[1] + 0.02, w + sp[2] + 0.012);
+        pos.push(sp[0], sp[1] + 0.02, w + sp[2] - 0.0015);
+        pos.push(sp[0], sp[1] + 0.02, w + sp[2] + 0.004);
         uv.push(0, t); uv.push(1, t);
         if (i < S) { var a = i * 2; idx.push(a, a + 1, a + 3, a, a + 3, a + 2); }
       }
@@ -314,19 +314,19 @@ J.Weapon = (function () {
       envMap: env, envMapIntensity: 0.3
     });
 
-    var hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.0205, 0.0245, HILT_LEN, 12), woodMat);
+    var hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.0135, 0.0165, HILT_LEN, 12), woodMat);
     hilt.position.y = -HILT_LEN / 2;
     hilt.castShadow = true;
     parts.add(hilt);
 
     // 缠绳层（略粗）
-    var wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.0232, 0.0262, HILT_LEN * 0.66, 12), wrapMat);
+    var wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.0158, 0.0182, HILT_LEN * 0.66, 12), wrapMat);
     wrap.position.y = -HILT_LEN * 0.52;
     parts.add(wrap);
 
     /* 鎏金箍环 */
     for (var i = 0; i < 3; i++) {
-      var ring = new THREE.Mesh(new THREE.TorusGeometry(0.0245, 0.0042, 8, 16), goldMat);
+      var ring = new THREE.Mesh(new THREE.TorusGeometry(0.0168, 0.0028, 8, 16), goldMat);
       ring.rotation.x = Math.PI / 2;
       ring.position.y = -0.03 - i * 0.085;
       ring.castShadow = true;
@@ -336,14 +336,14 @@ J.Weapon = (function () {
     /* ── 尾端：玉饰 + 金环 ── */
     var pommel = new THREE.Group();
     pommel.position.y = -HILT_LEN - 0.008;
-    var capRing = new THREE.Mesh(new THREE.TorusGeometry(0.040, 0.0075, 8, 18), goldMat);
+    var capRing = new THREE.Mesh(new THREE.TorusGeometry(0.024, 0.0048, 8, 18), goldMat);
     capRing.rotation.x = Math.PI / 2;
     pommel.add(capRing);
-    var capDisk = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.030, 0.016, 14), goldMat);
+    var capDisk = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.017, 0.012, 14), goldMat);
     pommel.add(capDisk);
-    var jade = new THREE.Mesh(new THREE.SphereGeometry(0.019, 12, 10), gemMat);
+    var jade = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), gemMat);
     jade.position.y = -0.026;
-    jade.scale.set(1, 1.45, 0.75);
+    jade.scale.set(1, 1.5, 0.8);
     pommel.add(jade);
     parts.add(pommel);
 
@@ -352,14 +352,14 @@ J.Weapon = (function () {
     guard.position.y = 0.014;
 
     // 主盘
-    var disk = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.072, 0.014, 18), goldMat);
+    var disk = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.040, 0.010, 18), goldMat);
     disk.castShadow = true;
     guard.add(disk);
     // 外圈
-    var outerRing = new THREE.Mesh(new THREE.TorusGeometry(0.080, 0.0085, 8, 24), goldMat);
+    var outerRing = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.0052, 8, 24), goldMat);
     outerRing.rotation.x = Math.PI / 2;
     guard.add(outerRing);
-    var innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.0045, 8, 20), goldDark);
+    var innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.030, 0.0028, 8, 20), goldDark);
     innerRing.rotation.x = Math.PI / 2;
     guard.add(innerRing);
 
@@ -367,8 +367,8 @@ J.Weapon = (function () {
     for (var c = 0; c < 6; c++) {
       var a = c / 6 * Math.PI * 2;
       var cloud = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), goldMat);
-      cloud.scale.set(0.030, 0.008, 0.018);
-      cloud.position.set(Math.cos(a) * 0.062, c % 2 ? 0.010 : -0.010, Math.sin(a) * 0.062);
+      cloud.scale.set(0.017, 0.005, 0.010);
+      cloud.position.set(Math.cos(a) * 0.035, c % 2 ? 0.007 : -0.007, Math.sin(a) * 0.035);
       cloud.rotation.y = -a;
       cloud.rotation.z = (c % 2 ? 1 : -1) * 0.35;
       guard.add(cloud);
@@ -376,19 +376,19 @@ J.Weapon = (function () {
     // 火焰纹：两侧挑出的尖叶
     for (var f = -1; f <= 1; f += 2) {
       for (var q = 0; q < 2; q++) {
-        var flame = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.062, 5), goldMat);
-        flame.position.set(f * (0.092 + q * 0.012), q ? 0.012 : -0.012, 0);
+        var flame = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.040, 5), goldMat);
+        flame.position.set(f * (0.052 + q * 0.008), q ? 0.008 : -0.008, 0);
         flame.rotation.z = f * (q ? 1.15 : -1.05);
         flame.rotation.x = 0.2;
         guard.add(flame);
       }
     }
     // 中心蓝紫灵玉
-    var gem = new THREE.Mesh(new THREE.SphereGeometry(0.024, 14, 12), gemMat);
+    var gem = new THREE.Mesh(new THREE.SphereGeometry(0.0145, 14, 12), gemMat);
     gem.position.y = 0.004;
     gem.scale.set(1, 1, 1.45);
     guard.add(gem);
-    var halo = new THREE.Mesh(new THREE.SphereGeometry(0.040, 12, 10),
+    var halo = new THREE.Mesh(new THREE.SphereGeometry(0.024, 12, 10),
       new THREE.MeshBasicMaterial({ color: 0x8a6cff, transparent: true, opacity: 0.20, blending: THREE.AdditiveBlending, depthWrite: false }));
     halo.position.y = 0.004;
     guard.add(halo);
@@ -430,7 +430,7 @@ J.Weapon = (function () {
         ].join('\n')
       });
       for (var i = 0; i < count; i++) {
-        var wobble = 0.012 + i * 0.008;
+        var wobble = 0.006 + i * 0.004;
         var geo = buildBladeGeo(20);
         // 沿法线外扩一点点
         var p = geo.attributes.position;
