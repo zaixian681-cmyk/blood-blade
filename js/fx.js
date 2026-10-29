@@ -74,6 +74,19 @@ J.FX = {
   },
 
   /* ── 火花粒子池 ── */
+  _sparkTexture: function () {
+    var c = document.createElement('canvas'); c.width = c.height = 32;
+    var g = c.getContext('2d');
+    var grd = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+    grd.addColorStop(0, 'rgba(255,255,255,1)');
+    grd.addColorStop(0.35, 'rgba(255,255,255,0.85)');
+    grd.addColorStop(0.7, 'rgba(255,255,255,0.25)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 32, 32);
+    var t = new THREE.CanvasTexture(c);
+    return t;
+  },
+
   _buildSparkPool: function () {
     var F = this, n = 220;
     var g = new THREE.BufferGeometry();
@@ -82,7 +95,8 @@ J.FX = {
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     var mat = new THREE.PointsMaterial({
-      size: 0.10, vertexColors: true, transparent: true, opacity: 0.95,
+      size: 0.085, vertexColors: true, transparent: true, opacity: 0.95,
+      map: this._sparkTexture(), alphaTest: 0.01,
       depthWrite: false, blending: THREE.AdditiveBlending
     });
     var p = new THREE.Points(g, mat);

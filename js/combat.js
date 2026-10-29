@@ -31,10 +31,24 @@ J.Combat = (function () {
       P.stamina = Math.max(0, P.stamina - (m.stamina || 0));
       if (m.qi) P.qi = Math.max(0, P.qi - m.qi);
 
-      /* 起手冲刺 */
+      /* 起手：先转向，再吸附冲脸 */
       var dir = J.aimDir();
-      P.dashDir.copy(dir).multiplyScalar(m.lunge || 0);
-      P.dashT = m.air ? 0.06 : 0.12;
+      P.yaw = Math.atan2(dir.x, dir.z);          // ★ 关键修复：动作真的朝目标挥
+
+      var tgt = P.target && !P.target.dead && !P.target.gone ? P.target : J.nearestFoe(8.5);
+      P.hitTarget = tgt || null;   // 本次出招锁定的目标
+      if (tgt && !m.air) {
+        var tdx = tgt.pos.x - P.pos.x, tdz = tgt.pos.z - P.pos.z;
+        var td = Math.hypot(tdx, tdz);
+        var desired = 1.35;                       // 贴身，让刀真的砍到人身上
+        var travel = Math.max(0, Math.min(td - desired, 6.5));
+        var dur = 0.11;
+        P.dashDir.copy(dir).multiplyScalar(travel / dur);
+        P.dashT = dur;
+      } else {
+        P.dashDir.copy(dir).multiplyScalar(m.lunge || 0);
+        P.dashT = m.air ? 0.06 : 0.12;
+      }
 
       /* 招式名飘一下（重击以上） */
       if (m.type === 'heavy' || m.type === 'charge' || m.type === 'skill' || m.type === 'finisher') {
@@ -123,18 +137,25 @@ J.Combat = (function () {
     hitCheck: function (m) {
       var P = J.P, W = J.WINFO;
       var fx = Math.sin(P.yaw), fz = Math.cos(P.yaw);
-      var reach = (m.reach || W.reach) * W.rangeMul;
-      var arc = (m.arc || W.arc) * W.arcMul;
+      var reach = (m.reach || W.reach) * W.rangeMul + 0.55;   // 容差
+      var arc = (m.arc || W.arc) * W.arcMul + 0.22;
 
       for (var i = 0; i < J.foes.length; i++) {
         var f = J.foes[i];
         if (f.dead || f.gone || P.hitSet.indexOf(f) >= 0) continue;
         var dx = f.pos.x - P.pos.x, dz = f.pos.z - P.pos.z;
         var d = Math.hypot(dx, dz);
-        if (d > reach + 0.35) continue;
-        if (Math.abs(f.pos.y - P.pos.y) > 2.6) continue;
-        var dot = (dx * fx + dz * fz) / (d || 1);
-        if (dot < Math.cos(arc)) continue;
+        var bodyR = 0.45;                                     // 敌人身体半径
+        var isLocked = (P.hitTarget === f);
+        /* 锁定的目标：只要在距离内就必定命中，不受角度影响（防止敌人绕背导致空刀） */
+        if (isLocked) {
+          if (d - bodyR > reach * 1.2) continue;
+        } else {
+          if (d - bodyR > reach) continue;
+          var dot = (dx * fx + dz * fz) / (d || 1);
+          if (dot < Math.cos(arc)) continue;
+        }
+        if (Math.abs(f.pos.y - P.pos.y) > 3.0) continue;
 
         P.hitSet.push(f);
         this.dealDamage(f, m, d);
@@ -158,7 +179,7 @@ J.Combat = (function () {
       dmg = Math.round(dmg);
 
       var isHeavy = (m.type === 'heavy' || m.type === 'charge' || m.type === 'skill' || m.type === 'finisher');
-      var kb = (m.kb || 1) * (isHeavy ? 1.0 : 0.7);
+      var kb = (m.kb || 1) * (isHeavy ? 0.85 : 0.45);
 
       /* 削韧 */
       if (f.poise !== undefined) {
@@ -192,7 +213,7 @@ J.Combat = (function () {
       if (isHeavy) J.FX.ring(f.pos.x, f.pos.y + 1.1, f.pos.z, 0xffe0b0, 3.2);
 
       /* 打击感：顿帧与震屏按武器重量分级 */
-      var hs = isHeavy ? 0.095 : 0.05;
+      var hs = isHeavy ? 0.085 : 0.042;
       if (m.type === 'finisher') hs = 0.16;
       J.FX.hitstop(hs);
       J.FX.shake(isHeavy ? 0.22 : 0.09, isHeavy ? 0.26 : 0.14);
@@ -275,8 +296,8 @@ J.Combat = (function () {
         J.FX.shake(0.34, 0.42);
         J.FX.ring(foe.pos.x, foe.pos.y + 1.15, foe.pos.z, 0xffc880, 5.2);
         J.FX.ring(foe.pos.x, foe.pos.y + 1.15, foe.pos.z, 0xff8a4a, 3.0);
-        J.FX.spark(foe.pos.x, foe.pos.y + 1.2, foe.pos.z, 54, 0xff9a50, 2.8);
-        J.FX.spark(foe.pos.x, foe.pos.y + 1.2, foe.pos.z, 26, 0xffe8c0, 1.8);
+        J.FX.spark(foe.pos.x, foe.pos.y + 1.2, foe.pos.z, 30, 0xff9a50, 2.8);
+        J.FX.spark(foe.pos.x, foe.pos.y + 1.2, foe.pos.z, 16, 0xffe8c0, 1.8);
         J.FX.dmgText(new THREE.Vector3(foe.pos.x, foe.pos.y + 2.0, foe.pos.z),
           isBoss ? '重创 ' + dmg : '斩', 'crit');
         J.comboCount = (J.comboCount || 0) + 3;

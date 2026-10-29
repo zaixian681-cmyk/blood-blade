@@ -248,7 +248,7 @@
       // 击退与浮空
       var dx = this.pos.x - fromPos.x, dz = this.pos.z - fromPos.z;
       var dl = Math.hypot(dx, dz) || 1;
-      var kb = power * (1 - this.cfg.poise / 200);
+      var kb = power * (1 - this.cfg.poise / 240) * 0.72;
       this.knock.x += dx / dl * kb * 3.2;
       this.knock.z += dz / dl * kb * 3.2;
       if (isHeavy) { this.vy = Math.max(this.vy, 3.6 * power); }

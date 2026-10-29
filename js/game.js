@@ -84,6 +84,21 @@ J.initPlayer = function () {
       if (P.state !== 'air') J.Combat.start('p1', { force: true });
       return;
     }
+    /* 霸体：出招判定期间不被打断（仍掉血），避免"挥刀一半被推开" */
+    var inHyper = false;
+    if (P.state === 'atk' && P.move && P.moveDur) {
+      var prog = P.tim / P.moveDur;
+      if (prog <= P.move.hit[1] + 0.08) inHyper = true;
+    }
+    if (inHyper) {
+      P.hp -= dmg * 0.8;
+      J.FX.dmgText(new THREE.Vector3(P.pos.x, 1.8, P.pos.z), '-' + Math.round(dmg * 0.8), '');
+      J.FX.spark(P.pos.x, 1.3, P.pos.z, 8, 0xff7a5a, 0.9);
+      J.FX.shake(0.07, 0.1);
+      if (P.hp <= 0) J.playerDie();
+      return;
+    }
+
     if (P.blocking) {
       dmg *= 0.18;
       P.stamina -= dmg * 2.2 + 8;
@@ -124,38 +139,66 @@ J.playerDie = function () {
 /* ═══════════ 攻击（交给 J.Combat） ═══════════ */
 J.aimDir = function () {
   var P = J.P;
-  // 自动软锁定：正前方 5m 内最近的敌人
-  if (!P.target) {
-    var best = null, bd = 5.0;
-    for (var i = 0; i < J.foes.length; i++) {
-      var f = J.foes[i];
-      if (f.dead || f.gone) continue;
-      var ddx = f.pos.x - P.pos.x, ddz = f.pos.z - P.pos.z;
-      var dd = Math.hypot(ddx, ddz);
-      if (dd > bd) continue;
-      var angTo = Math.atan2(ddx, ddz);
-      if (Math.abs(J.U.ang(P.yaw, angTo)) > 1.15) continue;   // 只在正前方 ±66°
-      bd = dd; best = f;
-    }
-    if (best) {
-      var bx = best.pos.x - P.pos.x, bz = best.pos.z - P.pos.z;
-      var bl = Math.hypot(bx, bz) || 1;
-      return new THREE.Vector3(bx / bl, 0, bz / bl);
-    }
-  }
-  // 锁定时朝目标
+
+  /* 1. 手动锁定优先 */
   if (P.target && !P.target.dead && !P.target.gone) {
     var dx = P.target.pos.x - P.pos.x, dz = P.target.pos.z - P.pos.z;
     var d = Math.hypot(dx, dz) || 1;
     return new THREE.Vector3(dx / d, 0, dz / d);
   }
-  // 有移动输入时朝输入方向
-  if (J.IN.mag > 0.15) {
+
+  /* 2. 有移动输入：先看输入方向附近有没有敌人，有就微调过去 */
+  if (J.IN.mag > 0.25) {
     var mx = J.IN.mx, mz = J.IN.mz;
     var wy = Math.atan2(mx, mz) + P.camYaw;
-    return new THREE.Vector3(Math.sin(wy), 0, Math.cos(wy));
+    var inDir = new THREE.Vector3(Math.sin(wy), 0, Math.cos(wy));
+    var near = J.nearestFoeInArc(P, 7.0, inDir, 1.05);
+    if (near) {
+      var ndx = near.pos.x - P.pos.x, ndz = near.pos.z - P.pos.z;
+      var nl = Math.hypot(ndx, ndz) || 1;
+      return new THREE.Vector3(ndx / nl, 0, ndz / nl);
+    }
+    return inDir;
   }
+
+  /* 3. 静止：直接朝最近的敌人（不限角度，这是手机上的攻击辅助） */
+  var t = J.nearestFoe(8.0);
+  if (t) {
+    var tx = t.pos.x - P.pos.x, tz = t.pos.z - P.pos.z;
+    var tl = Math.hypot(tx, tz) || 1;
+    return new THREE.Vector3(tx / tl, 0, tz / tl);
+  }
+
+  /* 4. 周围没人：沿当前朝向 */
   return new THREE.Vector3(Math.sin(P.yaw), 0, Math.cos(P.yaw));
+};
+
+/* 最近的敌人（可限定距离） */
+J.nearestFoe = function (maxD) {
+  var P = J.P, best = null, bd = maxD === undefined ? 1e9 : maxD;
+  for (var i = 0; i < J.foes.length; i++) {
+    var f = J.foes[i];
+    if (f.dead || f.gone || f.state === 'dead') continue;
+    var d = Math.hypot(f.pos.x - P.pos.x, f.pos.z - P.pos.z);
+    if (d < bd) { bd = d; best = f; }
+  }
+  return best;
+};
+
+/* 指定方向扇形内的最近敌人 */
+J.nearestFoeInArc = function (P, maxD, dir, arcCos) {
+  var best = null, bd = maxD;
+  for (var i = 0; i < J.foes.length; i++) {
+    var f = J.foes[i];
+    if (f.dead || f.gone) continue;
+    var dx = f.pos.x - P.pos.x, dz = f.pos.z - P.pos.z;
+    var d = Math.hypot(dx, dz);
+    if (d > bd || d < 0.01) continue;
+    var dot = (dx * dir.x + dz * dir.z) / d;
+    if (dot < arcCos) continue;
+    bd = d; best = f;
+  }
+  return best;
 };
 
 /* ═══════════ 每帧更新玩家 ═══════════ */
@@ -196,6 +239,7 @@ J.updatePlayer = function (dt, t) {
     }
     /* 目标失效 */
     if (P.target && (P.target.dead || P.target.gone)) P.target = null;
+    if (P.hitTarget && (P.hitTarget.dead || P.hitTarget.gone)) P.hitTarget = null;
     if (P.target && Math.hypot(P.target.pos.x - P.pos.x, P.target.pos.z - P.pos.z) > 30) P.target = null;
 
     /* ── 状态机 ── */
@@ -217,7 +261,7 @@ J.updatePlayer = function (dt, t) {
 
       /* 攻击中仍可闪避取消后摇（长刀后摇长，必须有这个出口） */
       var m0 = P.move;
-      if (wantDash && m0 && P.tim / P.moveDur > 0.62 && P.stamina >= 12) {
+      if (wantDash && m0 && P.tim / P.moveDur > 0.45 && P.stamina >= 12) {
         J.startDash();
       }
       /* 输入缓冲 */
@@ -896,10 +940,12 @@ J.updateCamera = function (dt) {
   // 锁定时相机跟向目标
   if (P.target && !P.target.dead && !P.target.gone) {
     var want = Math.atan2(P.target.pos.x - P.pos.x, P.target.pos.z - P.pos.z) + Math.PI;
-    P.camYaw = P.camYaw + J.U.ang(P.camYaw, want) * Math.min(1, dt * 3.2);
+    P.camYaw = P.camYaw + J.U.ang(P.camYaw, want) * Math.min(1, dt * 5.5);
   }
 
   var dist = P.camDist;
+  if (P.state === 'atk') dist -= 0.22;      // 出刀时镜头微推，增强冲击
+  if (P.state === 'charge') dist += 0.35;   // 蓄力时拉开一点看全身
   var focus = new THREE.Vector3(P.pos.x, P.pos.y + 1.10, P.pos.z);
   // 越肩：视角焦点向右偏，人物落在画面左三分之一
   var rx = Math.cos(P.camYaw), rz = -Math.sin(P.camYaw);
@@ -925,9 +971,9 @@ J.updateCamera = function (dt) {
 
   // 平滑
   if (!P._camPos) P._camPos = camPos.clone();
-  P._camPos.x = J.U.damp(P._camPos.x, camPos.x, 18, dt);
-  P._camPos.y = J.U.damp(P._camPos.y, camPos.y, 18, dt);
-  P._camPos.z = J.U.damp(P._camPos.z, camPos.z, 18, dt);
+  P._camPos.x = J.U.damp(P._camPos.x, camPos.x, 26, dt);
+  P._camPos.y = J.U.damp(P._camPos.y, camPos.y, 26, dt);
+  P._camPos.z = J.U.damp(P._camPos.z, camPos.z, 26, dt);
 
   C.position.copy(P._camPos);
   var so = J.FX.shakeOffset();
