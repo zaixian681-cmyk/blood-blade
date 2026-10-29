@@ -23,6 +23,12 @@
       color: { cloth: 0x2e3a44, trim: 0x5a8a8a, skin: 0xd8b090, blade: 0xb0b8c0 },
       scale: 0.96, prize: 1, ranged: true
     },
+    xiaowuji: {
+      name: '萧无极', hp: 560, speed: 3.4, dmg: 24, range: 3.2, reach: 3.7,
+      wind: 0.50, strike: 0.18, rec: 0.55, cd: 1.05, poise: 170,
+      color: { cloth: 0x2a1414, trim: 0xd0a050, skin: 0xd8b090, blade: 0xe0d0b8 },
+      scale: 1.28, prize: 20, boss: true
+    },
     boss: {
       name: '断水教头', hp: 420, speed: 3.2, dmg: 20, range: 3.0, reach: 3.4,
       wind: 0.55, strike: 0.18, rec: 0.62, cd: 1.2, poise: 140,
@@ -174,8 +180,9 @@
   }
 
   /* ═══ 敌人实体 ═══ */
-  function Foe(type, x, z, yaw) {
+  function Foe(type, x, z, yaw, override) {
     var cfg = TYPE[type] || TYPE.bandit;
+    if (override) { cfg = Object.assign({}, cfg, override); }
     this.type = type; this.cfg = cfg;
     this.M = buildFoe(TYPE[type], cfg);
     J.S.add(this.M.root);

@@ -143,6 +143,13 @@ J.NPC = (function () {
       dialog: 'shen_meet'
     });
 
+    /* 顾长风：崖顶西侧石上 */
+    spawn('gu', -19, 190, {
+      name: '顾长风',
+      cloth: 0x5a6470, trim: 0x3a4148, hair: 0x6a6258, skin: 0xd0b098,
+      yaw: 1.4, dialog: 'gu_first'
+    });
+
     /* 空寂和尚：古寺大殿前 */
     spawn('monk', -52, 22, {
       name: '空寂和尚',
@@ -218,12 +225,29 @@ J.NPC = (function () {
       }
     }
 
+    /* 顾长风：首次相遇不占任务 */
+    if (npc.key === 'gu' && J.Story && !J.Story.hasFlag('metGu')) {
+      J.Story.talk('gu', 'gu_first');
+      return true;
+    }
+    if (npc.key === 'gu' && J.Story && J.Story.hasFlag('metGu')) {
+      var s2 = J.Story.bladeStage;
+      var guLines = s2 >= 3
+        ? ['顾长风：你把刀用明白了。', '顾长风：你父亲要是看见，会笑。']
+        : (s2 >= 2
+          ? ['顾长风：刀气出来了。', '顾长风：但还差一口气 —— 那口气，得你自己找。']
+          : ['顾长风：还没到时候。', '顾长风：先去把该救的人救回来。']);
+      J.UI.showDialog('顾长风', guLines, null);
+      return true;
+    }
+
     /* 无业务往来：说一句闲话 */
     var idle = {
       shen: '沈昭宁：当心脚下。',
       monk: '空寂和尚：阿弥陀佛。',
       villager: '乡民：这年景，能活着就好。',
-      xiao: '萧无极：你还不配与我一战。'
+      xiao: '萧无极：你还不配与我一战。',
+      gu: '顾长风：……'
     };
     J.UI.toast(idle[npc.key] || (npc.name + '：……'), 2.0);
     return true;
