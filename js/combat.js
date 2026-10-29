@@ -31,6 +31,13 @@ J.Combat = (function () {
       P.stamina = Math.max(0, P.stamina - (m.stamina || 0));
       if (m.qi) P.qi = Math.max(0, P.qi - m.qi);
 
+      /* 新一段刀光 */
+      if (J.Slash) {
+        J.Slash.begin();
+        var heavyMove = (m.type === 'heavy' || m.type === 'charge' || m.type === 'skill' || m.type === 'finisher');
+        J.Slash.setColor(heavyMove ? 0xfff0d0 : 0xf2f8ff, heavyMove ? 0xffc46a : 0x86c8ff);
+      }
+
       /* 起手：先转向，再吸附冲脸 */
       var dir = J.aimDir();
       P.yaw = Math.atan2(dir.x, dir.z);          // ★ 关键修复：动作真的朝目标挥

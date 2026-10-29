@@ -12,6 +12,7 @@ J.FX = {
     F.shakeT = 0;
     F.hitstopT = 0;
     F.dmgEls = [];
+    if (J.Slash) J.Slash.init();
 
     window.addEventListener('shake', function (e) { F.shake(e.detail.amt, e.detail.dur); });
   },

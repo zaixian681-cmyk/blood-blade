@@ -136,6 +136,35 @@ J.playerDie = function () {
   J.UI.toast('倒 下 了', 2.2);
 };
 
+/* ═══════════ 刀光轨迹 ═══════════ */
+J.updateSlash = function (dt) {
+  var P = J.P;
+  if (!J.Slash) return;
+  var w = P.weapon && P.weapon.root;
+  if (w) {
+    var show = false, prog = 0;
+    if (P.state === 'atk' && P.move && P.moveDur) {
+      prog = P.tim / P.moveDur;
+      show = prog > 0.06 && prog < 0.92;
+    } else if (P.state === 'charge' || P.state === 'exec') {
+      show = true;
+    }
+    if (show) {
+      w.updateWorldMatrix(true, false);
+      var tip = new THREE.Vector3(0.55, 1.42, 0).applyMatrix4(w.matrixWorld);
+      var base = new THREE.Vector3(0.24, 0.96, 0).applyMatrix4(w.matrixWorld);
+      /* 外晕：沿刀刃方向两端各外扩，形成更宽更淡的第二层 */
+      var dirv = tip.clone().sub(base);
+      var dl = dirv.length() || 1;
+      dirv.multiplyScalar(1 / dl);
+      var baseO = base.clone().addScaledVector(dirv, -0.22);
+      var tipO = tip.clone().addScaledVector(dirv, 0.26);
+      J.Slash.push(base, tip, baseO, tipO);
+    }
+  }
+  J.Slash.update(dt, J.clock);
+};
+
 /* ═══════════ 攻击（交给 J.Combat） ═══════════ */
 J.aimDir = function () {
   var P = J.P;
@@ -1008,6 +1037,7 @@ J.startLoop = function () {
       J.updatePlayer(dt, J.clock);
       for (var i = 0; i < J.foes.length; i++) J.foes[i].update(dt, J.clock);
       J.FX.update(dt, J.clock);
+      J.updateSlash(dt);
       J.World.update(dt, J.clock, J.P.pos);
       J.updateCamera(raw);
       J.UI.update(raw);
