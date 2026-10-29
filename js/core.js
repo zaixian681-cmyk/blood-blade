@@ -372,7 +372,7 @@ J.IN = {
   lx: 0, ly: 0,                     // 视角增量
   keys: {},
   btn: { atk: 0, heavy: 0, dash: 0, lock: 0 },
-  _press: { atk: 0, heavy: 0, dash: 0, jump: 0, skill: 0, fin: 0, lock: 0 },
+  _press: { atk: 0, heavy: 0, dash: 0, jump: 0, ult: 0 },
   joyActive: false, joyId: -1, lookId: -1, guardHeld: false, parryPress: 0,
   _ox: 0, _oy: 0, _cx: 0, _cy: 0
 };
@@ -389,10 +389,8 @@ J.initInput = function () {
     if (e.code === 'KeyJ') IN._press.atk = 1;
     if (e.code === 'KeyK') { IN._press.heavy = 1; IN.hold_heavy = true; }
     if (e.code === 'Space') { IN._press.dash = 1; e.preventDefault(); }
-    if (e.code === 'KeyQ') IN._press.lock = 1;
     if (e.code === 'ShiftLeft') { IN._press.jump = 1; }
-    if (e.code === 'KeyE') IN._press.skill = 1;
-    if (e.code === 'KeyR') IN._press.fin = 1;
+    if (e.code === 'KeyE' || e.code === 'KeyR' || e.code === 'KeyQ') IN._press.ult = 1;
   });
   window.addEventListener('keyup', function (e) { IN.keys[e.code] = 0; if (e.code === 'KeyK') IN.hold_heavy = false; });
 
@@ -503,9 +501,7 @@ J.initInput = function () {
   bindBtn('bHeavy', 'heavy');
   bindBtn('bDash', 'dash');
   bindBtn('bJump', 'jump');
-  bindBtn('bSkill', 'skill');
-  bindBtn('bFin', 'fin');
-  bindBtn('bLock', 'lock');
+  bindBtn('bUlt', 'ult');
 
   /* 格挡：按住生效 */
   var gEl = document.getElementById('bGuard');

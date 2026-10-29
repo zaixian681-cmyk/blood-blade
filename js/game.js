@@ -124,6 +124,25 @@ J.playerDie = function () {
 /* ═══════════ 攻击（交给 J.Combat） ═══════════ */
 J.aimDir = function () {
   var P = J.P;
+  // 自动软锁定：正前方 5m 内最近的敌人
+  if (!P.target) {
+    var best = null, bd = 5.0;
+    for (var i = 0; i < J.foes.length; i++) {
+      var f = J.foes[i];
+      if (f.dead || f.gone) continue;
+      var ddx = f.pos.x - P.pos.x, ddz = f.pos.z - P.pos.z;
+      var dd = Math.hypot(ddx, ddz);
+      if (dd > bd) continue;
+      var angTo = Math.atan2(ddx, ddz);
+      if (Math.abs(J.U.ang(P.yaw, angTo)) > 1.15) continue;   // 只在正前方 ±66°
+      bd = dd; best = f;
+    }
+    if (best) {
+      var bx = best.pos.x - P.pos.x, bz = best.pos.z - P.pos.z;
+      var bl = Math.hypot(bx, bz) || 1;
+      return new THREE.Vector3(bx / bl, 0, bz / bl);
+    }
+  }
   // 锁定时朝目标
   if (P.target && !P.target.dead && !P.target.gone) {
     var dx = P.target.pos.x - P.pos.x, dz = P.target.pos.z - P.pos.z;
@@ -167,7 +186,7 @@ J.updatePlayer = function (dt, t) {
     var wantAtk = J.pressed('atk');
     var wantHeavy = J.pressed('heavy');
     var wantDash = J.pressed('dash');
-    var wantLock = J.pressed('lock');
+    var wantLock = false;
     var guardHeld = !!IN.keys.KeyL || IN.guardHeld;
 
     /* 锁定切换 */
@@ -185,11 +204,15 @@ J.updatePlayer = function (dt, t) {
 
     /* ══ 状态机（长刀体系） ══ */
     var wantJump = J.pressed('jump');
-    var wantSkill = J.pressed('skill');
-    var wantFin = J.pressed('fin');
+    var wantSkill = false;
+    var wantUlt = J.pressed('ult');
     var heavyHeld = !!IN.heavyHeld;
 
-    if (P.state === 'atk') {
+    if (P.state === 'exec') {
+      J.Combat.updateExecution(J.rawDt || dt);
+      P.invuln = Math.max(P.invuln, 0.02);
+    }
+    else if (P.state === 'atk') {
       J.Combat.update(dt);
 
       /* 攻击中仍可闪避取消后摇（长刀后摇长，必须有这个出口） */
@@ -221,10 +244,13 @@ J.updatePlayer = function (dt, t) {
     else {
       /* idle / run */
       /* 终结技 > 技能 > 蓄力 > 轻击 > 重击 */
-      if (wantFin && J.Combat.canFinisher()) {
-        J.Combat.start('fin');
-      } else if (wantSkill && J.Combat.canSkill()) {
-        J.Combat.start('skill');
+      if (wantUlt) {
+        /* 一个键，按优先级自动选：处决 > 终结 > 技能 */
+        var victim = J.findBreakFoe();
+        if (victim) { J.Combat.execution(victim); }
+        else if (J.Combat.canFinisher()) { J.Combat.start('fin'); }
+        else if (J.Combat.canSkill()) { J.Combat.start('skill'); }
+        else if (P.stamina >= 9) { J.Combat.start('l1'); }
       } else if (wantHeavy) {
         J.startCharge();
       } else if (wantAtk) {
@@ -308,9 +334,10 @@ J.updatePlayer = function (dt, t) {
     /* 内力回复 */
     P.qi = Math.min(P.maxQi, P.qi + J.WINFO.qiRegen * dt);
 
-    /* 地形贴地 / 跳跃重力 */
+    /* 地形贴地 / 跳跃重力（处决演出中由演出接管位置） */
     var gy = J.Terrain.heightAt(P.pos.x, P.pos.z);
-    if (P.pos.y > gy + 0.03 || P.vy > 0.01) {
+    if (P.state === 'exec') { /* 跳过物理 */ }
+    else if (P.pos.y > gy + 0.03 || P.vy > 0.01) {
       P.vy -= 27 * dt;
       P.pos.y += P.vy * dt;
       if (P.pos.y <= gy) {
@@ -537,6 +564,56 @@ J.animatePlayer = function (dt, t) {
       tgt.torsoY = J.U.lerp(tgt.torsoY, 0, back2);
       tgt.hipsRotY = J.U.lerp(tgt.hipsRotY, 0, back2);
     }
+  } else if (st === 'exec') {
+    var et2 = P.execT || 0;
+    if (et2 < 0.30) {
+      /* 举刀过顶蓄势 */
+      var k1 = Math.min(1, et2 / 0.30);
+      tgt.arX = -0.45 - 2.35 * k1;
+      tgt.arZ = -0.15 - 0.22 * k1;
+      tgt.arEl = -0.5 - 0.55 * k1;
+      tgt.alX = -0.40 - 1.95 * k1;
+      tgt.alZ = 0.20 + 0.1 * k1;
+      tgt.torsoX = -0.32 * k1;
+      tgt.torsoY = -0.28 * k1;
+      tgt.headX = -0.14 * k1;
+      tgt.squat = 0.14 * k1;
+      tgt.kneeL = 0.34 * k1; tgt.kneeR = 0.38 * k1;
+      tgt.wpnRotX = 1.1 + 1.3 * k1;
+      tgt.hipsY = 0.86 - 0.10 * k1;
+    } else if (et2 < 0.56) {
+      /* 一刀劈下 */
+      var k2 = Math.min(1, (et2 - 0.30) / 0.26);
+      var ease2 = k2 * k2 * (3 - 2 * k2);
+      tgt.arX = -2.80 + 3.75 * ease2;
+      tgt.arZ = -0.37 + 0.55 * ease2;
+      tgt.arEl = -1.05 + 1.30 * ease2;
+      tgt.alX = -2.35 + 2.95 * ease2;
+      tgt.alZ = 0.30;
+      tgt.torsoX = -0.32 + 0.86 * ease2;
+      tgt.torsoY = -0.28 + 0.62 * ease2;
+      tgt.headX = -0.14 + 0.30 * ease2;
+      tgt.squat = 0.14 + 0.10 * ease2;
+      tgt.kneeL = 0.34 + 0.30 * ease2;
+      tgt.kneeR = 0.38 + 0.26 * ease2;
+      tgt.wpnRotX = 2.40 - 2.10 * ease2;
+      tgt.hipsY = 0.86 - 0.10 - 0.06 * ease2;
+    } else {
+      /* 收刀站定 */
+      var k3 = Math.min(1, (et2 - 0.56) / 0.45);
+      tgt.arX = J.U.lerp(0.95, -0.18, k3);
+      tgt.arZ = J.U.lerp(0.18, -0.12, k3);
+      tgt.arEl = J.U.lerp(0.25, -0.25, k3);
+      tgt.alX = J.U.lerp(0.60, -0.18, k3);
+      tgt.alZ = 0.12;
+      tgt.torsoX = J.U.lerp(0.54, 0.02, k3);
+      tgt.torsoY = J.U.lerp(0.34, 0.0, k3);
+      tgt.squat = J.U.lerp(0.24, 0.0, k3);
+      tgt.kneeL = J.U.lerp(0.64, 0.0, k3);
+      tgt.kneeR = J.U.lerp(0.64, 0.0, k3);
+      tgt.wpnRotX = J.U.lerp(0.30, 1.72, k3);
+      tgt.hipsY = 0.86 - 0.16 + 0.16 * k3;
+    }
   } else if (st === 'charge') {
     /* 蓄力：双手举刀过顶，身体下沉后仰 */
     var cq = Math.min(1, (P.chargeT || 0) / 0.85);
@@ -724,6 +801,18 @@ J.startDash = function () {
   P.yaw = dirAng;
 };
 
+/* 取最近的破防敌人（用于处决） */
+J.findBreakFoe = function () {
+  var P = J.P, best = null, bd = 4.6;
+  for (var i = 0; i < J.foes.length; i++) {
+    var f = J.foes[i];
+    if (f.dead || f.gone || f.state !== 'break') continue;
+    var d = Math.hypot(f.pos.x - P.pos.x, f.pos.z - P.pos.z);
+    if (d < bd) { bd = d; best = f; }
+  }
+  return best;
+};
+
 /* 附近是否有被破防的敌人（用于自动追击） */
 J.hasBreakTarget = function () {
   var P = J.P;
@@ -768,6 +857,31 @@ J.pickTarget = function (cur) {
 /* ═══════════ 相机 ═══════════ */
 J.updateCamera = function (dt) {
   var P = J.P, C = J.C, IN = J.IN;
+
+  /* ── 处决特写镜头 ── */
+  if (P.state === 'exec' && P.execTarget) {
+    var f = P.execTarget, et = P.execT;
+    var push = Math.min(1, et / 0.26);
+    var ang = P.execFace + 1.52;                 // 侧后方 87°
+    var dist = 3.0 - push * 0.75;
+    var tx = f.pos.x + Math.sin(ang) * dist;
+    var tz = f.pos.z + Math.cos(ang) * dist;
+    var ty = f.pos.y + 1.25 + push * 0.12;
+
+    if (!P._execCam) P._execCam = new THREE.Vector3(tx, ty, tz);
+    var sm = 1 - Math.exp(-7 * Math.max(0.016, J.rawDt || 0.016));
+    P._execCam.x += (tx - P._execCam.x) * sm;
+    P._execCam.y += (ty - P._execCam.y) * sm;
+    P._execCam.z += (tz - P._execCam.z) * sm;
+
+    C.position.copy(P._execCam);
+    C.lookAt(f.pos.x, f.pos.y + 1.05, f.pos.z);
+    C.fov = J.U.damp(C.fov, 52, 6, dt || 0.016);
+    C.updateProjectionMatrix();
+    IN.lx = 0; IN.ly = 0;
+    return;
+  }
+  if (P._execCam) P._execCam = null;
 
   P.camYaw -= IN.lx;
   P.camPitch = J.U.clamp(P.camPitch + IN.ly, -0.55, 0.95);
@@ -831,6 +945,7 @@ J.startLoop = function () {
     last = now;
     if (raw > 0.12) raw = 0.12;
     var dt = raw * (J.timeScale || 1);
+    J.rawDt = raw;
     J.clock += dt;
     J.dt = dt;
 

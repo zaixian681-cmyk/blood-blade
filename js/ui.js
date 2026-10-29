@@ -15,8 +15,7 @@ J.UI = {
     this.$flash = document.getElementById('flash');
     this.$chargeWrap = document.getElementById('chargeWrap');
     this.$chargeBar = document.getElementById('chargeBar');
-    this.$bSkill = document.getElementById('bSkill');
-    this.$bFin = document.getElementById('bFin');
+    this.$bUlt = document.getElementById('bUlt');
     this._moveT = 0; this._chargeOn = false;
     this._lastHp = -1; this._lastSp = -1; this._lastCombo = -1;
     this._toastT = 0;
@@ -47,16 +46,17 @@ J.UI = {
       this._lastQi = qi;
     }
 
-    /* 技能 / 终结按钮可用状态 */
-    if (this.$bSkill) {
+    /* 绝技按钮可用状态 */
+    if (this.$bUlt) {
+      var victim = J.findBreakFoe ? J.findBreakFoe() : null;
+      var fin = J.Combat.canFinisher();
       var sk = J.Combat.canSkill();
-      this.$bSkill.classList.toggle('off', !sk);
-      this.$bSkill.classList.toggle('ready', sk);
-    }
-    if (this.$bFin) {
-      var fn = J.Combat.canFinisher();
-      this.$bFin.classList.toggle('off', !fn);
-      this.$bFin.classList.toggle('ready', fn);
+      var usable = !!victim || fin || sk;
+      this.$bUlt.classList.toggle('off', !usable);
+      this.$bUlt.classList.toggle('ready', usable && !victim);
+      this.$bUlt.classList.toggle('exec', !!victim);
+      var label = victim ? '决' : '绝';
+      if (this.$bUlt.textContent !== label) this.$bUlt.textContent = label;
     }
 
     /* 招式名淡出 */

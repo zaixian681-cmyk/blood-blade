@@ -204,6 +204,98 @@ J.Combat = (function () {
       P.qi = Math.min(J.WINFO.maxQi, P.qi + (isHeavy ? 4 : 2));
     },
 
+    /* ══ 处决：破防敌人的专属演出 ══ */
+    execution: function (foe) {
+      var P = J.P;
+      if (!foe || foe.dead || foe.gone || foe.state !== 'break') return false;
+      if (P.qi < 15) return false;
+
+      P.qi -= 15;
+      P.state = 'exec';
+      P.tim = 0;
+      P.execT = 0;
+      P.execHit = false;
+      P.execTarget = foe;
+      P.invuln = 2.4;
+      P.blocking = false;
+      P.move = null;
+      P.moveId = '';
+      P.vy = 0;
+
+      /* 面向敌人并算出位置 */
+      var dx = foe.pos.x - P.pos.x, dz = foe.pos.z - P.pos.z;
+      var d = Math.hypot(dx, dz) || 1;
+      var nx = dx / d, nz = dz / d;
+      P.yaw = Math.atan2(dx, dz);
+      P.execFrom = P.pos.clone();
+      P.execTo = new THREE.Vector3(
+        foe.pos.x - nx * 1.75,
+        J.Terrain.heightAt(foe.pos.x - nx * 1.75, foe.pos.z - nz * 1.75),
+        foe.pos.z - nz * 1.75
+      );
+      P.execFace = Math.atan2(dx, dz);
+
+      /* 敌人定格，转身面向玩家 */
+      foe.yaw = Math.atan2(-dx, -dz);
+      foe.enter('break', 3.2);
+
+      /* 慢动作 + 镜头接管 */
+      J.slowMo = 0.42;
+      J.FX.shake(0.06, 0.2);
+      J.FX.ring(P.pos.x, P.pos.y + 1.0, P.pos.z, 0x9fd0ff, 3.0);
+      J.UI.flashText('处 决');
+      return true;
+    },
+
+    /* 每帧推进处决 */
+    updateExecution: function (dt) {
+      var P = J.P, foe = P.execTarget;
+      if (P.state !== 'exec') return;
+      P.execT += dt;
+      var t = P.execT;
+
+      /* 阶段 1：瞬身贴近（0~0.22） */
+      if (t < 0.22) {
+        var k = t / 0.22;
+        var e = k * k * (3 - 2 * k);
+        P.pos.x = J.U.lerp(P.execFrom.x, P.execTo.x, e);
+        P.pos.z = J.U.lerp(P.execFrom.z, P.execTo.z, e);
+        P.pos.y = J.U.lerp(P.execFrom.y, P.execTo.y, e);
+      }
+
+      /* 阶段 2：斩下（0.42 命中） */
+      if (t >= 0.42 && !P.execHit) {
+        P.execHit = true;
+        var isBoss = foe.cfg.boss;
+        var dmg = isBoss ? Math.round(foe.maxHp * 0.34) : 9999;
+        foe.hurt(dmg, P.pos, 3.4, true, false);
+        if (isBoss) foe.enter('break', 2.0);
+
+        J.FX.hitstop(0.22);
+        J.FX.shake(0.34, 0.42);
+        J.FX.ring(foe.pos.x, foe.pos.y + 1.15, foe.pos.z, 0xffc880, 5.2);
+        J.FX.ring(foe.pos.x, foe.pos.y + 1.15, foe.pos.z, 0xff8a4a, 3.0);
+        J.FX.spark(foe.pos.x, foe.pos.y + 1.2, foe.pos.z, 54, 0xff9a50, 2.8);
+        J.FX.spark(foe.pos.x, foe.pos.y + 1.2, foe.pos.z, 26, 0xffe8c0, 1.8);
+        J.FX.dmgText(new THREE.Vector3(foe.pos.x, foe.pos.y + 2.0, foe.pos.z),
+          isBoss ? '重创 ' + dmg : '斩', 'crit');
+        J.comboCount = (J.comboCount || 0) + 3;
+        J.comboTimer = 3.0;
+        P.qi = Math.min(J.MAXQI || J.WINFO.maxQi, P.qi + 12);
+      }
+
+      /* 阶段 3：收刀（1.5 结束） */
+      if (t > 1.55) {
+        P.state = 'idle';
+        P.tim = 0;
+        P.execT = 0;
+        P.execTarget = null;
+        P.execHit = false;
+        J.slowMo = 1;
+        J.timeScale = 1;
+      }
+    },
+
     /* ── 终结技是否可用 ── */
     canFinisher: function () {
       var P = J.P;

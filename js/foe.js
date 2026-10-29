@@ -279,6 +279,57 @@
       this.tim = 0;
       this.dur = dur || 0;
       this.hitThisSwing = false;
+      if (st === 'break') this.dropWeapon();
+      else if (this.weaponDropped && st !== 'dead') this.pickWeapon();
+    },
+
+    /* 武器脱手：从手部换挂到本体，带抛物线飞出 */
+    dropWeapon: function () {
+      var M = this.M, w = M.weapon;
+      if (!w || this.weaponDropped) return;
+      this.weaponDropped = true;
+      // 保存原始本地变换
+      this._wBase = { p: w.position.clone(), r: w.rotation.clone() };
+      J.S.attach(w);                 // 挂到场景，直接用世界坐标
+      this.dropVel = new THREE.Vector3(
+        (Math.random() - 0.5) * 3.2, 3.4 + Math.random() * 1.6, (Math.random() - 0.5) * 3.2
+      );
+      this.dropSpin = new THREE.Vector3(
+        (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 12
+      );
+      this.dropGrounded = false;
+      J.FX.spark(this.pos.x, this.pos.y + 1.1, this.pos.z, 12, 0xdfe6f0, 1.3);
+    },
+
+    pickWeapon: function () {
+      var M = this.M, w = M.weapon;
+      if (!w || !this.weaponDropped) return;
+      this.weaponDropped = false;
+      M.armR.hand.add(w);              // 直接挂回手部
+      if (this._wBase) {
+        w.position.copy(this._wBase.p);
+        w.rotation.copy(this._wBase.r);
+      }
+      w.scale.setScalar(1);
+    },
+
+    /* 脱手武器的物理（在 update 里调用） */
+    updateDropped: function (dt) {
+      if (!this.weaponDropped || this.dropGrounded) return;
+      var w = this.M.weapon;
+      this.dropVel.y -= 18 * dt;
+      w.position.addScaledVector(this.dropVel, dt);   // 世界坐标
+      w.rotation.x += this.dropSpin.x * dt;
+      w.rotation.y += this.dropSpin.y * dt;
+      w.rotation.z += this.dropSpin.z * dt;
+      var gy = J.Terrain.heightAt(w.position.x, w.position.z) + 0.14;
+      if (w.position.y <= gy) {
+        w.position.y = gy;
+        this.dropGrounded = true;
+        this.dropVel.set(0, 0, 0);
+        w.rotation.set(-Math.PI / 2, w.rotation.y, 0);
+        J.FX.spark(w.position.x, gy, w.position.z, 7, 0xbfae90, 0.7);
+      }
     },
 
     /* 攻击判定：对玩家 */
@@ -297,6 +348,9 @@
     update: function (dt, t) {
       if (this.gone) return;
       var M = this.M, P = J.P;
+
+      /* 脱手武器 */
+      this.updateDropped(dt);
 
       /* 死亡：倒下然后消失 */
       if (this.dead) {
@@ -449,8 +503,10 @@
 
       M.root.position.set(this.pos.x, this.pos.y, this.pos.z);
       M.spin.rotation.y = this.yaw;
-      M.blob.position.y = 0.02 - this.pos.y * 0.85;
-      M.blob.material.opacity = 0.32 * Math.max(0, 1 - this.pos.y * 0.5);
+      /* 影子贴地：只按离地高度衰减，不能用世界高度 */
+      var airH = Math.max(0, this.pos.y - J.Terrain.heightAt(this.pos.x, this.pos.z));
+      M.blob.position.y = 0.02 - airH * 0.9;
+      M.blob.material.opacity = 0.32 * Math.max(0, 1 - airH * 0.42);
     },
 
     anim: function (dt, t, spd, distToP) {
@@ -496,6 +552,31 @@
         M.torso.rotation.y = (0.5 - 0.9 * sp2) * this.swingSide;
         M.torso.rotation.x = -0.12 + 0.30 * sp2;
         M.weapon.rotation.x = 0.9 - 0.6 * sp2;
+      } else if (this.state === 'break') {
+        /* 破防：单膝跪地，刀脱手，垂头喘息 */
+        var bk = Math.min(1, this.tim / 0.26);
+        var breathe = Math.sin(this.tim * 5.5) * 0.015;
+        /* 左腿单膝跪地：大腿竖直向下，小腿向后折 */
+        M.legL.hip.rotation.x = 0.05 * bk;
+        M.legL.knee.rotation.x = 1.62 * bk;
+        /* 右腿屈膝支撑：大腿前抬，小腿竖直 */
+        M.legR.hip.rotation.x = -1.28 * bk;
+        M.legR.knee.rotation.x = 1.42 * bk;
+        M.body.position.y = 0.86 * this.cfg.scale - 0.30 * bk + breathe;
+        /* 上身：前倾但不趴下 */
+        M.torso.rotation.x = 0.34 * bk;
+        M.torso.rotation.y = 0;
+        M.torso.rotation.z = 0.10 * bk;
+        M.head.rotation.x = 0.42 * bk;
+        M.head.rotation.y = 0.12 * bk;
+        /* 双臂垂落 */
+        M.armR.sh.rotation.x = 0.52 * bk;
+        M.armR.sh.rotation.z = -0.42 * bk;
+        M.armR.el.rotation.x = -0.30 * bk;
+        M.armL.sh.rotation.x = 0.38 * bk;
+        M.armL.sh.rotation.z = 0.36 * bk;
+        M.armL.el.rotation.x = -0.35 * bk;
+        if (M.shield) M.armL.sh.rotation.x = 0.72 * bk;
       } else if (this.state === 'stagger' || this.state === 'hurt') {
         M.torso.rotation.x = 0.28;
         M.armR.sh.rotation.x = 0.5;

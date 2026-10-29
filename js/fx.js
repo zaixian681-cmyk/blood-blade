@@ -169,7 +169,7 @@ J.FX = {
     if (F.hitstopT > 0) {
       F.hitstopT -= dt;
       J.timeScale = 0.045;
-      if (F.hitstopT <= 0) J.timeScale = 1;
+      if (F.hitstopT <= 0) J.timeScale = J.slowMo || 1;
     }
 
     /* 拖尾淡出 */
