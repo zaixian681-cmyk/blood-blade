@@ -51,7 +51,7 @@ J.initPlayer = function () {
   H.weaponHolder.add(wp.root);
 
   var W = J.World;
-  var spawnX = J.Terrain.pathX(W.spawn.z);
+  var spawnX = J.Terrain.pathX(W.spawn.z) + (W.spawn.x || 0);
   var P = {
     model: H, weapon: wp,
     pos: new THREE.Vector3(spawnX, J.Terrain.heightAt(spawnX, W.spawn.z), W.spawn.z),
@@ -258,7 +258,7 @@ J.updatePlayer = function (dt, t) {
       P.respawnT -= dt;
       if (P.respawnT <= 0) {
         P.dead = false; P.hp = P.maxHp; P.stamina = P.maxStamina;
-        var rsx = J.Terrain.pathX(J.World.spawn.z);
+        var rsx = J.Terrain.pathX(J.World.spawn.z) + (J.World.spawn.x || 0);
         P.pos.set(rsx, J.Terrain.heightAt(rsx, J.World.spawn.z), J.World.spawn.z);
         P.yaw = J.World.spawn.yaw; P.camYaw = P.yaw + Math.PI;
         P.state = 'idle'; P.tim = 0; P.target = null;

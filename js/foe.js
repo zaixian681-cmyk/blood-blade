@@ -633,36 +633,30 @@
       J.foes.push(f);
       return f;
     }
-    function px(z) { return J.Terrain.pathX(z); }
-    /* 竹海山道：巡逻队 */
-    add('bandit', px(148) + 11, 148, 0.8);
-    add('bandit', px(132) - 10, 132, -0.4);
-    add('bandit', px(110) + 8, 110, 1.2);
-    add('bandit', px(86) - 9, 86, 2.2);
-    add('thrower', px(120) + 16, 120, 2.8);
-    /* 吊桥两端守卫 */
-    add('bandit', px(34) + 2, 34, 3.0);
-    add('guard', px(30) - 1, 30, 3.0);
-    add('bandit', px(-26) - 2, -26, 0.2);
-    /* 黑风山寨：主力据点 */
-    add('bandit', px(-16) + 8, -16, 1.6);
-    add('bandit', px(-30) - 12, -30, -1.0);
-    add('bandit', px(-40) + 14, -40, 0.5);
-    add('guard', px(-50) + 5, -50, 2.4);
-    add('guard', px(-58) - 9, -58, -0.6);
-    add('guard', px(-38) - 4, -38, 1.8);
-    add('thrower', px(-44) + 16, -44, 2.0);
-    add('thrower', px(-24) - 14, -24, -1.4);
-    /* 古寺 */
-    add('bandit', px(-96) + 6, -96, 0.4);
-    add('bandit', px(-104) - 8, -104, 1.6);
-    add('thrower', px(-120) - 10, -120, 1.0);
-    add('guard', px(-130) + 4, -130, -0.8);
-    /* 断剑谷 Boss 与护卫 */
-    var b1 = add('guard', px(-168) + 12, -168, 0.6);
-    var b2 = add('guard', px(-168) - 12, -168, -0.6);
-    var boss = add('boss', px(-186), -186, Math.PI);
-    boss.home.set(px(-186), -186);
+    function rx(z) { return J.Terrain.riverX(z); }
+    /* 谷底渡口：巡逻山贼 */
+    add('bandit', rx(96) - 26, 96, 0.8);
+    add('bandit', rx(70) + 24, 70, -0.4);
+    add('bandit', rx(34) - 30, 34, 1.2);
+    add('bandit', rx(8) + 26, 8, 2.2);
+    add('thrower', rx(52) + 34, 52, 2.8);
+    /* 木桥守卫 */
+    add('guard', rx(50) - 8, 50, 3.0);
+    add('bandit', rx(50) + 10, 50, 0.2);
+    /* 瀑布崖下 */
+    add('bandit', J.Terrain.FALL.x - 14, 122, 0.6);
+    add('bandit', J.Terrain.FALL.x + 16, 118, -1.2);
+    /* 北坡 */
+    add('bandit', rx(-84) + 14, -84, 1.6);
+    add('guard', rx(-96) - 10, -96, -0.6);
+    add('thrower', rx(-110) + 18, -110, 2.0);
+    add('guard', rx(-126) - 12, -126, 1.0);
+    /* 山顶宫殿守卫 */
+    add('guard', -18, -168, 0.5);
+    add('guard', 18, -168, -0.5);
+    add('thrower', 0, -158, 1.5);
+    var boss = add('boss', 0, -172, Math.PI);
+    boss.home.set(0, -172);
     J.boss = boss;
   };
 

@@ -87,7 +87,7 @@ r.setPixelRatio(Math.min(window.devicePixelRatio || 1, J.dprCap));
   J.R = r;
 
   var sc = new THREE.Scene();
-  sc.fog = new THREE.FogExp2(0xc6d2d8, 0.0052);
+  sc.fog = new THREE.FogExp2(0xc8d6dc, 0.0026);
   J.S = sc;
 
   var cam = new THREE.PerspectiveCamera(62, (J.Stage.W || window.innerWidth) / (J.Stage.H || window.innerHeight), 0.1, 900);
