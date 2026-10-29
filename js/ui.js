@@ -194,6 +194,19 @@ J.UI = {
       }
     }
 
+    /* 交互按钮：靠近 NPC 显示「谈」，靠近物件显示「拾」 */
+    if (this.$bUse) {
+      var npcNear = J.NPC && J.NPC.near;
+      var itNear = J.Interact && J.Interact.near;
+      var want = !!(npcNear || itNear);
+      if (want !== this._useOn) {
+        this._useOn = want;
+        this.$bUse.classList.toggle('on', want);
+      }
+      var lbl = npcNear ? '谈' : (itNear ? '拾' : '拾');
+      if (this.$bUse.textContent !== lbl) this.$bUse.textContent = lbl;
+    }
+
     /* 提示 */
     if (this._toastT > 0) {
       this._toastT -= dt;

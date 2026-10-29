@@ -173,6 +173,20 @@ J.perfectDodge = function (fromPos) {
   P.qi = Math.min(P.maxQi, P.qi + 6);
 };
 
+/* ═══════════ 交互 / 交谈（同一个按钮） ═══════════ */
+J.doUse = function () {
+  var P = J.P;
+  if (J.UI && J.UI.isDialogOpen && J.UI.isDialogOpen()) { J.UI.dialogNext(); return true; }
+  /* 优先找最近的对话对象 */
+  if (J.NPC && J.NPC.near) return J.NPC.talk();
+  if (J.Ally && J.Ally.down) {
+    var d = Math.hypot(J.Ally.pos.x - P.pos.x, J.Ally.pos.z - P.pos.z);
+    if (d < 3.2) { J.Ally.reviveT = 0; return true; }
+  }
+  if (J.Interact && J.Interact.near) return J.Interact.use();
+  return false;
+};
+
 J.playerDie = function () {
   var P = J.P;
   if (P.dead) return;
@@ -326,6 +340,7 @@ J.updatePlayer = function (dt, t) {
     var wantSkill = false;
     var wantUlt = J.pressed('ult'); if (wantUlt) J.consume('ult');
     var wantUse = J.pressed('use'); if (wantUse) J.consume('use');
+    if (wantUse) J.doUse();
     var heavyHeld = !!IN.heavyHeld;
 
     if (P.state === 'exec') {
@@ -1057,15 +1072,16 @@ J.updateCamera = function (dt) {
   if (hitD < dist) dist = Math.max(0.9, hitD - 0.25);
 
   /* 防穿地形：沿视线采样高度，撞到山坡就把镜头拉近 */
-  var TN = 10;
-  for (var si = 1; si <= TN; si++) {
+  var TN = 12;
+  /* 前 1/3 不检测：贴身的坡不该把镜头顶到后脑勺 */
+  for (var si = 4; si <= TN; si++) {
     var tt = dist * (si / TN);
     var sx = focus.x + dirx * tt;
     var sy = focus.y + diry * tt;
     var sz = focus.z + dirz * tt;
-    var gh = J.Terrain.heightAt(sx, sz) + 0.85;
+    var gh = J.Terrain.heightAt(sx, sz) + 0.38;
     if (sy < gh) {
-      dist = Math.max(1.05, dist * ((si - 1) / TN) - 0.05);
+      dist = Math.max(2.6, dist * ((si - 1) / TN) - 0.05);
       break;
     }
   }
@@ -1086,7 +1102,7 @@ J.updateCamera = function (dt) {
   P._camPos.z = J.U.damp(P._camPos.z, camPos.z, 26, dt);
 
   /* 镜头贴到脸上时隐藏角色，避免穿模 */
-  var nearHide = dist < 1.55;
+  var nearHide = dist < 1.35;
   if (P.model.root.visible === nearHide) P.model.root.visible = !nearHide;
 
   C.position.copy(P._camPos);

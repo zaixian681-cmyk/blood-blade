@@ -219,11 +219,12 @@ J.Amb = (function () {
   /* ── 初始化 ── */
   A.init = function () {
     if (!J.S) return;
-    buildRidges();
+    /* 远山不再用单面纸片：交给雾与地形，避免贴纸感和黑块 */
     buildMist();
     buildLeaves();
     buildBirds();
     buildRays();
+    A.scatter();
   };
 
   /* 低配模式：关掉流雾与落叶，保留远山 */
@@ -231,6 +232,73 @@ J.Amb = (function () {
     if (mistGroup) mistGroup.visible = !on;
     if (leafPoint) leafPoint.visible = !on;
     if (rayGroup) rayGroup.visible = !on;
+  };
+
+  /* ── 地表密度：让每块地图都“长满东西” ── */
+  function prng(seed) {
+    var s2 = seed;
+    return function () { s2 = (s2 * 16807) % 2147483647; return s2 / 2147483647; };
+  }
+
+  A.scatter = function () {
+    var rnd = prng(20261029);
+    var groups = [];
+
+    function place(geo, mat, count, opt) {
+      opt = opt || {};
+      var im = new THREE.InstancedMesh(geo, mat, count);
+      im.castShadow = !!opt.shadow;
+      im.receiveShadow = false;
+      var m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
+      var placed = 0, guard = 0;
+      var minS = opt.minS === undefined ? 0.7 : opt.minS;
+      var maxS = opt.maxS === undefined ? 1.6 : opt.maxS;
+      while (placed < count && guard < count * 40) {
+        guard++;
+        var x = (rnd() - 0.5) * 380;
+        var z = (rnd() - 0.5) * 380;
+        var h = J.Terrain.heightAt(x, z);
+        if (h < 3.2 || h > 96) continue;
+        var slope = J.Terrain.slopeAt ? J.Terrain.slopeAt(x, z) : 0;
+        if (slope > (opt.maxSlope === undefined ? 0.55 : opt.maxSlope)) continue;
+        var dR = Math.abs(x - J.Terrain.riverX(z));
+        if (opt.nearRiver && (dR > opt.nearRiver || dR < 3)) continue;
+        if (opt.farFromWater && dR < 16) continue;
+        var s3 = minS + rnd() * (maxS - minS);
+        pos.set(x, h + (opt.yOff || 0), z);
+        q.setFromEuler(new THREE.Euler(0, rnd() * 6.28, (rnd() - 0.5) * (opt.tilt || 0)));
+        sc.set(s3 * (opt.sx || 1), s3 * (opt.sy || 1), s3 * (opt.sx || 1));
+        m4.compose(pos, q, sc);
+        im.setMatrixAt(placed, m4);
+        placed++;
+      }
+      im.count = placed;
+      im.instanceMatrix.needsUpdate = true;
+      im.frustumCulled = false;
+      J.S.add(im);
+      groups.push(im);
+      return im;
+    }
+
+    var grassGeo = new THREE.ConeGeometry(0.16, 0.62, 3, 1, true);
+    var grassMat = new THREE.MeshLambertMaterial({ color: 0x6f7d42, side: THREE.DoubleSide });
+    place(grassGeo, grassMat, 1500, { minS: 0.5, maxS: 1.5, maxSlope: 0.78, yOff: 0.22, tilt: 0.12 });
+
+    var rockGeo = new THREE.IcosahedronGeometry(0.5, 0);
+    var rockMat = new THREE.MeshLambertMaterial({ color: 0x726f66 });
+    place(rockGeo, rockMat, 240, { minS: 0.5, maxS: 2.4, maxSlope: 0.95, yOff: 0.1, sy: 0.7, tilt: 0.5 });
+
+    /* 水边芦苇：细锥，成片长在河岸 */
+    var reedGeo = new THREE.ConeGeometry(0.11, 1.7, 3, 1, true);
+    var reedMat = new THREE.MeshLambertMaterial({ color: 0x7d8a4a, side: THREE.DoubleSide });
+    place(reedGeo, reedMat, 520, { minS: 0.6, maxS: 1.45, maxSlope: 0.8, nearRiver: 24, yOff: 0.8, tilt: 0.22 });
+
+    /* 崖边枯木：少量深色锥，给崖顶一点轮廓 */
+    var deadGeo = new THREE.ConeGeometry(0.28, 2.6, 4, 1, true);
+    var deadMat = new THREE.MeshLambertMaterial({ color: 0x4a4238, side: THREE.DoubleSide });
+    place(deadGeo, deadMat, 90, { minS: 0.7, maxS: 1.5, maxSlope: 0.5, yOff: 1.3, tilt: 0.08 });
+
+    A.scatterGroups = groups;
   };
 
   /* ── 每帧 ── */
