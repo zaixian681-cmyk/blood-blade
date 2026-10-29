@@ -1,95 +1,63 @@
 /* ═══════════════════════════════════════════════
-   world.js — 峡谷江湖
-   国画式远山环 / 云海 / 谷底城镇 / 竹林山坡 / 崖顶楼阁
+   world.js — 青崖山·断剑谷
+   六区域：入口 / 竹海 / 吊桥 / 山寨 / 古寺 / 断剑谷
    ═══════════════════════════════════════════════ */
 J.World = (function () {
 
-  var W = { lanterns: [], fires: [], spawn: { x: -104, z: -46, yaw: Math.PI * 0.62 } };
+  var W = {
+    lanterns: [], fires: [], colliders: 0,
+    spawn: { x: 0, z: 236, yaw: Math.PI },
+    regions: []
+  };
 
   var C = {
-    stone: 0x6e6b62, stoneD: 0x4e4b44, stoneL: 0x82806f,
-    dirt: 0x5e4f3a, wood: 0x4a3626, woodD: 0x2e2118, woodL: 0x6a4c32,
+    stone: 0x6e6b62, stoneD: 0x4a473f, stoneL: 0x8a8579,
+    dirt: 0x5e4f3a, wood: 0x4a3626, woodD: 0x2a1d14, woodL: 0x6d4e34,
     wall: 0xbfb6a4, wallD: 0x8a8172,
-    tile: 0x2b3138, tileD: 0x1c2126,
-    red: 0x8a2e26, redD: 0x5e1e18, gold: 0xc09850,
+    tile: 0x2b3138, tileD: 0x1a1e23,
+    red: 0x8a2e26, redD: 0x5a1c16, gold: 0xc09850,
     bamboo: 0x4e6428, bambooL: 0x627c34, leaf: 0x3a5024,
-    ink: 0x24262a, ink2: 0x33363c
+    rock: 0x77746a, rockD: 0x57544c, moss: 0x4a5a34
   };
   var B;
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function hAt(x, z) { return J.Terrain.heightAt(x, z); }
 
-  /* ═══ 远山：环绕圆柱剪影（国画层叠） ═══ */
-  function mountainRing(radius, height, yBase, colTop, colBot, seed, repeatY) {
+  /* ══ 远山环 ══ */
+  function mountainRing(radius, height, yBase, colTop, colBot, seed) {
     var W2 = 2048, H2 = 512;
     var cv = document.createElement('canvas'); cv.width = W2; cv.height = H2;
     var g = cv.getContext('2d');
     g.clearRect(0, 0, W2, H2);
-
-    function noise1(x, s) {
-      var n = Math.sin(x * 127.1 + s * 311.7) * 43758.5453;
-      return n - Math.floor(n);
-    }
-    function smoothNoise(x, s) {
-      var i = Math.floor(x), f = x - i;
-      f = f * f * (3 - 2 * f);
-      return noise1(i, s) * (1 - f) + noise1(i + 1, s) * f;
-    }
-    // 用多层噪声叠出山脊线（周期性：x 用 W2 归一）
+    function noise1(x, s) { var n = Math.sin(x * 127.1 + s * 311.7) * 43758.5453; return n - Math.floor(n); }
     function ridge(u) {
       var v = 0, amp = 1, f = 3;
       for (var o = 0; o < 5; o++) {
-        // 周期化：sin 保证首尾相接
         v += amp * (0.5 + 0.5 * Math.sin(u * Math.PI * 2 * f + seed * 6.28 + o * 2.1)) * Math.pow(noise1(f * 7.3 + o, seed), 0.4);
-        f *= 2;
-        amp *= 0.48;
+        f *= 2; amp *= 0.48;
       }
       return v;
     }
     var grad = g.createLinearGradient(0, 0, 0, H2);
-    grad.addColorStop(0, colTop);
-    grad.addColorStop(1, colBot);
+    grad.addColorStop(0, colTop); grad.addColorStop(1, colBot);
     g.fillStyle = grad;
-
-    g.beginPath();
-    g.moveTo(0, H2);
     var pts = [];
     for (var px = 0; px <= W2; px += 4) {
       var u = px / W2;
-      var rv = ridge(u);
-      var y = H2 - (0.30 + rv * 0.62) * H2;
-      pts.push([px, y]);
+      pts.push([px, H2 - (0.30 + ridge(u) * 0.62) * H2]);
     }
-    // 首尾对齐
     pts[pts.length - 1][1] = pts[0][1];
-    g.lineTo(0, pts[0][1]);
+    g.beginPath(); g.moveTo(0, H2); g.lineTo(0, pts[0][1]);
     for (var i = 0; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
-    g.lineTo(W2, H2);
-    g.closePath();
-    g.fill();
-
-    // 山体上的皴擦纹理（横向淡线）
-    g.globalCompositeOperation = 'source-atop';
-    for (var s2 = 0; s2 < 240; s2++) {
-      var sx = Math.random() * W2, sy = Math.random() * H2;
-      g.strokeStyle = 'rgba(255,255,255,' + (0.02 + Math.random() * 0.05) + ')';
-      g.lineWidth = 1 + Math.random() * 2;
-      g.beginPath();
-      g.moveTo(sx, sy);
-      g.lineTo(sx + (Math.random() - 0.5) * 60, sy + Math.random() * 40);
-      g.stroke();
-    }
-    g.globalCompositeOperation = 'source-over';
+    g.lineTo(W2, H2); g.closePath(); g.fill();
 
     var tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = THREE.RepeatWrapping;
-    tex.repeat.set(1, 1);
-
     var geo = new THREE.CylinderGeometry(radius, radius, height, 96, 1, true);
     var mat = new THREE.MeshBasicMaterial({
       map: tex, transparent: true, side: THREE.BackSide, fog: false,
-      depthWrite: false, opacity: 1, toneMapped: false
+      depthWrite: false, toneMapped: false
     });
     var m = new THREE.Mesh(geo, mat);
     m.position.y = yBase;
@@ -97,138 +65,84 @@ J.World = (function () {
     return m;
   }
 
-  /* ═══ 云 ═══ sprite 云朵，避免大平面边缘穿帮 */
-  function cloudTexture(seed) {
-    var S = 256;
-    var cv = document.createElement('canvas'); cv.width = cv.height = S;
+  function cloudTex(seed) {
+    var S = 256, cv = document.createElement('canvas');
+    cv.width = cv.height = S;
     var g = cv.getContext('2d');
-    g.clearRect(0, 0, S, S);
-    var n = 9 + Math.floor(seed * 5);
-    for (var i = 0; i < n; i++) {
+    for (var i = 0; i < 10; i++) {
       var cx = S * 0.5 + (Math.random() - 0.5) * S * 0.66;
-      var cy = S * 0.52 + (Math.random() - 0.5) * S * 0.34;
-      var r = S * (0.11 + Math.random() * 0.20);
+      var cy = S * 0.52 + (Math.random() - 0.5) * S * 0.3;
+      var r = S * (0.11 + Math.random() * 0.2);
       var grd = g.createRadialGradient(cx, cy, 0, cx, cy, r);
-      grd.addColorStop(0, 'rgba(255,255,255,0.55)');
-      grd.addColorStop(0.5, 'rgba(255,255,255,0.28)');
+      grd.addColorStop(0, 'rgba(255,255,255,0.52)');
+      grd.addColorStop(0.5, 'rgba(255,255,255,0.26)');
       grd.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = grd;
-      g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
+      g.fillStyle = grd; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
     }
-    var tex = new THREE.CanvasTexture(cv);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
+    var t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
   }
 
-  function buildClouds() {
-    var texs = [cloudTexture(0.2), cloudTexture(0.55), cloudTexture(0.9)];
-    var out = [];
-    for (var i = 0; i < 26; i++) {
-      var ang = Math.random() * Math.PI * 2;
-      var dist = 160 + Math.random() * 420;
-      var y = 30 + Math.random() * 78;
-      var mat = new THREE.SpriteMaterial({
-        map: texs[i % 3], transparent: true,
-        opacity: 0.10 + Math.random() * 0.22,
-        depthWrite: false, fog: false,
-        color: new THREE.Color().setHSL(0.09, 0.05, 0.86 + Math.random() * 0.14)
-      });
-      var sp = new THREE.Sprite(mat);
-      sp.position.set(Math.cos(ang) * dist, y, Math.sin(ang) * dist);
-      var sc = 45 + Math.random() * 75;
-      sp.scale.set(sc, sc * (0.42 + Math.random() * 0.22), 1);
-      sp.userData = { ang: ang, dist: dist, drift: (Math.random() - 0.5) * 0.0016 };
-      J.S.add(sp);
-      out.push(sp);
-    }
-    return out;
-  }
-
-  /* ═══ 建筑构件 ═══ */
+  /* ══ 通用构件 ══ */
   function roof(x, yb, z, w, d, h, col, ridgeCol, ry) {
     ry = ry || 0;
-    var over = 0.7;
-    var halfD = d / 2 + over;
-    var slope = Math.sqrt(halfD * halfD + h * h);
-    var ang = Math.atan2(h, halfD);
+    var over = 0.75, halfD = d / 2 + over;
+    var slope = Math.sqrt(halfD * halfD + h * h), ang = Math.atan2(h, halfD);
     var pw = w + over * 2;
     for (var s = -1; s <= 1; s += 2) {
-      var ox = Math.sin(ry) * s * halfD / 2;
-      var oz = Math.cos(ry) * s * halfD / 2;
-      B.box(x + ox, yb + h / 2, z + oz, pw, 0.22, slope, col, { rx: s * ang, ry: ry });
+      var ox = Math.sin(ry) * s * halfD / 2, oz = Math.cos(ry) * s * halfD / 2;
+      B.box(x + ox, yb + h / 2, z + oz, pw, 0.24, slope, col, { rx: s * ang, ry: ry });
       var ribs = Math.max(3, Math.round(pw / 1.0));
       for (var r = 0; r < ribs; r++) {
         var off = -pw / 2 + (r + 0.5) * (pw / ribs);
-        B.box(x + ox + Math.cos(ry) * off, yb + h / 2 + 0.09, z + oz - Math.sin(ry) * off,
-          0.09, 0.10, slope * 0.96, ridgeCol, { rx: s * ang, ry: ry });
+        B.box(x + ox + Math.cos(ry) * off, yb + h / 2 + 0.10, z + oz - Math.sin(ry) * off,
+          0.09, 0.11, slope * 0.96, ridgeCol, { rx: s * ang, ry: ry });
       }
     }
-    B.box(x, yb + h + 0.10, z, pw + 0.2, 0.22, 0.4, ridgeCol, { ry: ry });
-    // 翘角（中式飞檐感）
+    B.box(x, yb + h + 0.10, z, pw + 0.2, 0.24, 0.42, ridgeCol, { ry: ry });
     for (var e = -1; e <= 1; e += 2) {
-      B.box(x + Math.cos(ry) * e * pw / 2, yb + h + 0.26, z - Math.sin(ry) * e * pw / 2,
-        0.6, 0.16, 0.5, ridgeCol, { ry: ry, rz: e * 0.24 });
+      B.box(x + Math.cos(ry) * e * pw / 2, yb + h + 0.28, z - Math.sin(ry) * e * pw / 2,
+        0.65, 0.16, 0.5, ridgeCol, { ry: ry, rz: e * 0.26 });
     }
   }
 
   function house(cx, cz, w, d, h, opt) {
     opt = opt || {};
     var y0 = hAt(cx, cz);
-    B.box(cx, y0 - 0.3, cz, w + 0.7, 1.2, d + 0.7, C.stoneD);      // 台基（埋进坡里）
-    var wallC = opt.wall || C.wall;
-    B.boxB(cx, y0, cz, w, h, d, wallC);
-    // 木柱
-    for (var sx = -1; sx <= 1; sx += 2) {
-      for (var sz = -1; sz <= 1; sz += 2) {
-        B.boxB(cx + sx * w / 2, y0, cz + sz * d / 2, 0.24, h, 0.24, C.woodD);
-      }
-    }
-    // 横梁
-    B.box(cx, y0 + h + 0.06, cz + d / 2, w + 0.35, 0.16, 0.18, C.woodD);
-    B.box(cx, y0 + h + 0.06, cz - d / 2, w + 0.35, 0.16, 0.18, C.woodD);
-    // 门
+    B.box(cx, y0 - 0.4, cz, w + 0.8, 1.4, d + 0.8, C.stoneD);
+    B.boxB(cx, y0, cz, w, h, d, opt.wall || C.wall);
+    for (var sx = -1; sx <= 1; sx += 2)
+      for (var sz = -1; sz <= 1; sz += 2)
+        B.boxB(cx + sx * w / 2, y0, cz + sz * d / 2, 0.26, h, 0.26, C.woodD);
     var fz = cz + (opt.front === undefined ? 1 : opt.front) * (d / 2 + 0.03);
-    B.box(cx, y0 + 1.05, fz, 1.05, 2.1, 0.12, C.wood);
-    B.box(cx, y0 + 2.2, fz, 1.35, 0.20, 0.16, C.woodD);
-    // 窗
+    B.box(cx, y0 + 1.1, fz, 1.1, 2.2, 0.12, C.wood);
+    B.box(cx, y0 + 2.3, fz, 1.4, 0.22, 0.18, C.woodD);
     if (w > 4.6) {
       for (var s2 = -1; s2 <= 1; s2 += 2) {
         var wx = cx + s2 * (w / 2 - 1.25);
-        B.box(wx, y0 + 1.55, fz, 1.15, 1.0, 0.12, C.woodD);
-        B.box(wx, y0 + 1.55, fz + (opt.front === undefined ? 1 : opt.front) * 0.04, 0.9, 0.76, 0.06, 0x1e1a16);
+        B.box(wx, y0 + 1.6, fz, 1.15, 1.0, 0.12, C.woodD);
+        B.box(wx, y0 + 1.6, fz + 0.04, 0.9, 0.76, 0.06, 0x1e1a16);
       }
     }
     roof(cx, y0 + h + 0.12, cz, w, d, opt.roofH || Math.max(1.2, d * 0.32), C.tile, C.tileD);
-    J.Col.add(cx - w / 2, y0, cz - d / 2, cx + w / 2, y0 + h + 1.5, cz + d / 2, 'wall');
+    J.Col.add(cx - w / 2, y0, cz - d / 2, cx + w / 2, y0 + h + 1.6, cz + d / 2, 'wall');
   }
 
-  /* 崖顶楼阁（远景，简化） */
-  function tower(cx, cz, scale, h) {
-    var y0 = hAt(cx, cz);
-    var w = 7 * scale, d = 7 * scale;
-    // 石台
-    B.box(cx, y0 + 1.2 * scale, cz, w * 1.5, 3.4 * scale, d * 1.5, C.stoneD);
-    var yy = y0 + 3.0 * scale;
-    for (var lvl = 0; lvl < 3; lvl++) {
-      var sw = w * (1 - lvl * 0.14), sd = d * (1 - lvl * 0.14);
-      B.boxB(cx, yy, cz, sw, h * 0.62, sd, lvl === 0 ? C.wallD : C.wall);
-      // 柱子
-      for (var i = -1; i <= 1; i += 2) {
-        B.boxB(cx + i * sw / 2, yy, cz + sd / 2, 0.3 * scale, h * 0.62, 0.3 * scale, C.redD);
-      }
-      if (lvl === 0) B.box(cx, yy + h * 0.30, cz + sd / 2 + 0.03, sw * 0.5, 1.6 * scale, 0.12, 0x1a1614);
-      roof(cx, yy + h * 0.62, cz, sw * 1.04, sd * 1.04, 1.5 * scale, C.tile, C.tileD);
-      yy += h * 0.62 + 1.5 * scale * 0.75;
-    }
-    // 顶饰
-    B.box(cx, yy + 1.1 * scale, cz, 0.3, 2.2 * scale, 0.3, C.gold);
-    J.Col.add(cx - w, y0, cz - d, cx + w, yy + 3, cz + d, 'wall');
+  function lamp(x, z) {
+    var y0 = hAt(x, z);
+    B.box(x, y0 + 0.1, z, 0.5, 0.2, 0.5, C.stoneD);
+    B.cyl(x, y0 + 0.2, z, 0.09, 1.6, 6, C.stone);
+    B.box(x, y0 + 1.9, z, 0.38, 0.32, 0.38, C.stoneL);
+    B.box(x, y0 + 2.08, z, 0.48, 0.10, 0.48, C.stoneD);
+    B.box(x, y0 + 1.9, z, 0.24, 0.2, 0.24, 0xf0d090, { noShade: true });
+    J.Col.add(x - 0.16, y0, z - 0.16, x + 0.16, y0 + 2.2, z + 0.16, 'thin');
   }
 
   function lantern(x, y, z, col) {
     var g = new THREE.Group();
-    var body = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8),
-      new THREE.MeshStandardMaterial({ color: col || 0xc8382a, emissive: col || 0xc8382a, emissiveIntensity: 1.5, roughness: 0.6 }));
+    var body = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8),
+      new THREE.MeshStandardMaterial({ color: col || 0xc8382a, emissive: col || 0xc8382a, emissiveIntensity: 1.4, roughness: 0.6 }));
     body.scale.set(1, 1.2, 1);
     g.add(body);
     g.position.set(x, y, z);
@@ -238,181 +152,573 @@ J.World = (function () {
 
   function bamboo(x, z, h) {
     var y0 = hAt(x, z);
-    var seg = 5;
+    var seg = 4;
     for (var i = 0; i < seg; i++) {
-      var r = 0.048 - i * 0.004;
-      B.cyl(x, y0 + i * (h / seg), z, r, h / seg * 0.96, 6, i % 2 ? C.bamboo : C.bambooL);
+      var r = 0.085 - i * 0.007;
+      B.cyl(x, y0 + i * (h / seg), z, r, h / seg * 0.96, 5, i % 2 ? C.bamboo : C.bambooL);
     }
     var topY = y0 + h;
-    for (var k = 0; k < 13; k++) {
-      var a = Math.random() * 6.28;
-      var lf = 0.9 + Math.random() * 0.8;
-      var ly = topY - Math.random() * 1.8;
-      B.box(x + Math.cos(a) * lf * 0.55, ly, z + Math.sin(a) * lf * 0.55,
-        lf, 0.025, 0.34, Math.random() > 0.4 ? C.leaf : C.bamboo, { ry: a, rz: (Math.random() - 0.5) * 0.5 });
+    for (var k = 0; k < 10; k++) {
+      var a = Math.random() * 6.28, lf = 0.5 + Math.random() * 0.45;
+      B.box(x + Math.cos(a) * lf * 0.7, topY - Math.random() * 2.0, z + Math.sin(a) * lf * 0.7,
+        lf, 0.02, 0.24, Math.random() > 0.5 ? C.leaf : C.bamboo, { ry: a, rz: (Math.random() - 0.5) * 0.25 });
     }
-    J.Col.add(x - 0.1, y0, z - 0.1, x + 0.1, topY, z + 0.1, 'thin');
+    J.Col.add(x - 0.12, y0, z - 0.12, x + 0.12, topY, z + 0.12, 'thin');
   }
 
   function pine(x, z, s) {
     var y0 = hAt(x, z);
-    B.cyl(x, y0, z, 0.15 * s, 2.3 * s, 6, C.woodD);
+    B.cyl(x, y0, z, 0.16 * s, 2.4 * s, 6, C.woodD);
     var cols = [0x35481f, 0x3d5524, 0x2c3d1a];
     for (var i = 0; i < 3; i++) {
-      var yy = y0 + 1.7 * s + i * 0.80 * s;
-      var rr = (1.65 - i * 0.42) * s;
-      // r2 收到 0.62，伞形不尖
-      B.cyl(x, yy, z, rr, 0.95 * s, 9, cols[i], { r2: rr * 0.62 });
-      // 侧面垂枝
-      for (var k = 0; k < 4; k++) {
-        var a = (k / 4) * 6.283 + i * 1.1;
-        B.box(x + Math.cos(a) * rr * 0.82, yy + 0.28 * s, z + Math.sin(a) * rr * 0.82,
-          rr * 0.62, 0.16 * s, rr * 0.42, cols[i], { ry: a, rz: -0.22 });
-      }
+      var yy = y0 + 1.8 * s + i * 0.82 * s;
+      var rr = (1.7 - i * 0.44) * s;
+      B.cyl(x, yy, z, rr, 0.95 * s, 8, cols[i], { r2: rr * 0.62 });
     }
-    J.Col.add(x - 0.16, y0, z - 0.16, x + 0.16, y0 + 4 * s, z + 0.16, 'thin');
+    J.Col.add(x - 0.2, y0, z - 0.2, x + 0.2, y0 + 4 * s, z + 0.2, 'thin');
   }
 
-  /* ═══ 主构建 ═══ */
+  function rock(x, z, s, col) {
+    var y0 = hAt(x, z);
+    var c = col || C.rock;
+    B.box(x, y0 + s * 0.3, z, s * 1.6, s * 0.9, s * 1.3, c, { ry: Math.random() * 3, rz: rnd(-0.12, 0.12) });
+    B.box(x + s * 0.2, y0 + s * 0.75, z - s * 0.1, s * 0.9, s * 0.55, s * 0.8, c, { ry: Math.random() * 3 });
+    /* 青苔 */
+    B.box(x, y0 + s * 0.82, z, s * 0.85, 0.06, s * 0.7, C.moss, { ry: Math.random() * 3 });
+    if (s > 1.2) J.Col.add(x - s * 0.75, y0, z - s * 0.6, x + s * 0.75, y0 + s, z + s * 0.6, 'wall');
+  }
+
+  /* ═══════════════════════════════════════════════
+     断崖吊桥
+     ═══════════════════════════════════════════════ */
+  function bridgeY(z) {
+    var t = (z - J.Terrain.GORGE_Z0) / (J.Terrain.GORGE_Z1 - J.Terrain.GORGE_Z0);
+    var tc = Math.max(0, Math.min(1, t));
+    var sag = Math.sin(tc * Math.PI) * 2.1;
+    var base = (13.4 + (12.4 - 13.4) * tc) - sag;
+    /* 两端向岸边地形收拢，消除落差 */
+    if (t < 0) base = 13.4 + (-t) * 0.2;
+    if (t > 1) base = 12.4 - (t - 1) * 0.3;
+    return base;
+  }
+
+  function buildBridge() {
+    var z0 = J.Terrain.GORGE_Z0 - 4, z1 = J.Terrain.GORGE_Z1 + 4;
+    var N = 30;
+    var span = z1 - z0;
+    for (var i = 0; i < N; i++) {
+      var t = (i + 0.5) / N;
+      var z = z0 + t * span;
+      var cx = J.Terrain.bridgeCenterX(z);
+      var y = bridgeY(z);
+      var slope = (bridgeY(z + 0.5) - bridgeY(z - 0.5));
+      var ang = Math.atan(slope);
+      /* 木板 */
+      B.box(cx, y, z, 7.4, 0.16, span / N * 0.94, C.woodL, { rx: -ang });
+      /* 侧绳 */
+      for (var s = -1; s <= 1; s += 2) {
+        B.box(cx + s * 3.75, y + 0.05, z, 0.12, 0.10, span / N * 0.94, C.woodD, { rx: -ang });
+      }
+      /* 碰撞：分段薄板，保证可行走 */
+      J.Col.add(cx - 3.7, y - 0.5, z - span / N / 2, cx + 3.7, y + 0.08, z + span / N / 2, 'ground');
+    }
+    /* 栏杆立柱 + 扶手绳 */
+    for (var k = 0; k <= 14; k++) {
+      var t2 = k / 14;
+      var z2 = z0 + t2 * span;
+      var cx2 = J.Terrain.bridgeCenterX(z2);
+      var y2 = bridgeY(z2);
+      for (var s2 = -1; s2 <= 1; s2 += 2) {
+        B.box(cx2 + s2 * 3.7, y2 + 0.62, z2, 0.16, 1.24, 0.16, C.woodD);
+      }
+    }
+    /* 扶手（分段折线） */
+    for (var k2 = 0; k2 < 14; k2++) {
+      var ta = k2 / 14, tb = (k2 + 1) / 14;
+      var za = z0 + ta * span, zb = z0 + tb * span;
+      var ya = bridgeY(za) + 1.2, yb = bridgeY(zb) + 1.2;
+      var cxa = J.Terrain.bridgeCenterX(za), cxb = J.Terrain.bridgeCenterX(zb);
+      for (var s3 = -1; s3 <= 1; s3 += 2) {
+        var mx = (cxa + cxb) / 2 + s3 * 3.7, my = (ya + yb) / 2, mz = (za + zb) / 2;
+        var len = Math.hypot(zb - za, yb - ya);
+        B.box(mx, my, mz, 0.09, 0.09, len, 0x6a5a42, { rx: -Math.atan2(yb - ya, zb - za) });
+      }
+    }
+    /* 两端桥塔 */
+    [[z0 - 1, 0], [z1 + 1, 0]].forEach(function (p) {
+      var zz = p[0], cc = J.Terrain.bridgeCenterX(zz);
+      var yy = hAt(cc, zz);
+      for (var s4 = -1; s4 <= 1; s4 += 2) {
+        B.boxB(cc + s4 * 4.2, yy - 1, zz, 0.55, 6.5, 0.55, C.woodD);
+        B.boxB(cc + s4 * 4.2, yy + 5.2, zz, 0.9, 0.4, 0.9, C.wood);
+      }
+      B.box(cc, yy + 6.6, zz, 9.8, 0.5, 0.7, C.woodD);
+      roof(cc, yy + 6.9, zz, 9.4, 2.4, 1.2, C.tile, C.tileD);
+      /* 只给两根柱子加碰撞，中间必须留通道 */
+      for (var s5 = -1; s5 <= 1; s5 += 2) {
+        J.Col.add(cc + s5 * 4.2 - 0.35, yy, zz - 0.35, cc + s5 * 4.2 + 0.35, yy + 7, zz + 0.35, 'wall');
+      }
+    });
+  }
+
+  /* ═══════════════════════════════════════════════
+     区域一：青崖山入口
+     ═══════════════════════════════════════════════ */
+  function buildEntrance() {
+    var z = 250, cx = J.Terrain.pathX(z);
+    var y = hAt(cx, z);
+
+    /* 山门：三开间 */
+    var gateW = 13, gateH = 6.2;
+    for (var s = -1; s <= 1; s += 2) {
+      B.boxB(cx + s * gateW / 2, y - 0.5, z, 0.9, gateH, 0.9, C.stoneD);
+      B.box(cx + s * gateW / 2, y + gateH * 0.55, z, 1.15, 0.35, 1.15, C.stoneL);
+      J.Col.add(cx + s * gateW / 2 - 0.5, y, z - 0.5, cx + s * gateW / 2 + 0.5, y + gateH, z + 0.5, 'wall');
+    }
+    /* 横梁 + 匾额 */
+    B.box(cx, y + gateH - 0.5, z, gateW + 1.6, 0.7, 1.0, C.woodD);
+    B.box(cx, y + gateH + 0.15, z + 0.55, 4.2, 1.3, 0.22, 0x2a2018);
+    B.box(cx, y + gateH + 0.15, z + 0.62, 3.6, 0.95, 0.06, C.gold);
+    roof(cx, y + gateH + 0.5, z, gateW + 2.2, 3.2, 1.9, C.tile, C.tileD);
+
+    /* 残破石碑 */
+    for (var i = 0; i < 3; i++) {
+      var sx = cx - 9 + i * 9, sz = z - 6 + (i === 1 ? 3 : 0);
+      var sy = hAt(sx, sz);
+      var hh = i === 1 ? 2.4 : 1.6;
+      B.boxB(sx, sy - 0.2, sz, 1.1, hh, 0.42, C.stone, { ry: rnd(-0.2, 0.2), rz: rnd(-0.05, 0.05) });
+      B.box(sx, sy + hh - 0.4, sz, 0.9, 0.12, 0.42, C.stoneL);
+      J.Col.add(sx - 0.6, sy, sz - 0.3, sx + 0.6, sy + hh, sz + 0.3, 'thin');
+    }
+
+    /* 路标木牌 */
+    var px = cx + 6, pz = z + 8, py = hAt(px, pz);
+    B.boxB(px, py - 0.2, pz, 0.22, 3.0, 0.22, C.woodD);
+    B.box(px + 0.6, py + 2.1, pz, 1.5, 0.7, 0.12, 0x8a7048, { ry: 0.35 });
+    J.Col.add(px - 0.2, py, pz - 0.2, px + 0.2, py + 3, pz + 0.2, 'thin');
+
+    /* 空地石阶 */
+    /* 路面碎石（不规则铺设，贴合地形） */
+    for (var st = 0; st < 26; st++) {
+      var sz2 = z - 8 - Math.random() * 42;
+      var sx2 = J.Terrain.pathX(sz2) + rnd(-3.4, 3.4);
+      var sy2 = hAt(sx2, sz2);
+      B.box(sx2, sy2 + 0.015, sz2, rnd(0.9, 2.0), 0.10, rnd(0.7, 1.6), C.stone, { ry: rnd(0, 3.14), tint: 0.8 + Math.random() * 0.3 });
+    }
+
+    /* 两侧石灯 */
+    lamp(cx - 7.5, z - 4);
+    lamp(cx + 7.5, z - 4);
+    lantern(cx - 5.6, y + gateH - 1.2, z + 0.6, 0xc8382a);
+    lantern(cx + 5.6, y + gateH - 1.2, z + 0.6, 0xc8382a);
+
+    W.regions.push({ id: 1, name: '青崖山入口', x: cx, z: z, r: 55 });
+  }
+
+  /* ═══════════════════════════════════════════════
+     区域二：竹海山道
+     ═══════════════════════════════════════════════ */
+  function buildBamboo() {
+    var z0 = 40, z1 = 190;
+    for (var z = z0; z < z1; z += 5) {
+      var cx = J.Terrain.pathX(z);
+      var density = 3 + Math.floor(Math.random() * 3);
+      for (var n = 0; n < density; n++) {
+        var side = Math.random() > 0.5 ? 1 : -1;
+        var off = 10 + Math.pow(Math.random(), 1.6) * 62;
+        var bx = cx + side * off;
+        var bz = z + rnd(-3, 3);
+        if (J.Terrain.slopeAt(bx, bz) > 0.72) continue;
+        bamboo(bx, bz, rnd(5.5, 9.5));
+      }
+    }
+    /* 废弃木屋 */
+    house(J.Terrain.pathX(120) + 16, 120, 7, 6.5, 3.2, { front: -1, roofH: 1.8 });
+    house(J.Terrain.pathX(76) - 18, 76, 6.5, 6, 3.0, { front: 1, roofH: 1.7 });
+    /* 倒木 */
+    for (var i = 0; i < 7; i++) {
+      var lx = J.Terrain.pathX(rnd(50, 180)) + rnd(-30, 30);
+      var lz = rnd(50, 180);
+      var ly = hAt(lx, lz);
+      B.box(lx, ly + 0.35, lz, 5.2, 0.55, 0.7, C.woodD, { ry: rnd(0, 3.14), rz: rnd(-0.15, 0.15) });
+      J.Col.add(lx - 2.4, ly, lz - 0.6, lx + 2.4, ly + 0.8, lz + 0.6, 'thin');
+    }
+    /* 石阶 */
+    /* 竹海路面：碎石与夯土 */
+    for (var k = 0; k < 90; k++) {
+      var sz = 48 + Math.random() * 140;
+      var sx = J.Terrain.pathX(sz) + rnd(-4.2, 4.2);
+      var sy = hAt(sx, sz);
+      var ss2 = rnd(0.5, 1.5);
+      B.box(sx, sy + 0.01, sz, ss2, 0.08, ss2 * 0.8, C.stone, { ry: rnd(0, 3.14), tint: 0.75 + Math.random() * 0.35 });
+    }
+    /* 隐藏山洞入口（路边凹处） */
+    var caveZ = 148, caveX = J.Terrain.pathX(caveZ) - 26;
+    var caveY = hAt(caveX, caveZ);
+    B.box(caveX, caveY + 2.4, caveZ, 6.5, 4.8, 5.5, C.rockD);
+    B.box(caveX + 1.2, caveY + 2.0, caveZ + 3.0, 3.2, 3.6, 1.2, 0x1a1a1a, { noShade: true });
+    B.box(caveX, caveY + 5.0, caveZ, 7.6, 0.6, 6.4, C.rock);
+    J.Col.add(caveX - 3.4, caveY, caveZ - 2.8, caveX + 3.4, caveY + 5, caveZ + 2.6, 'wall');
+    W.cavePos = { x: caveX + 1.2, y: caveY, z: caveZ + 2.6 };
+
+    W.regions.push({ id: 2, name: '竹海山道', x: J.Terrain.pathX(110), z: 110, r: 80 });
+  }
+
+  /* ═══════════════════════════════════════════════
+     区域四：黑风山寨
+     ═══════════════════════════════════════════════ */
+  function buildVillage() {
+    var cz = -95, cx = J.Terrain.pathX(cz);
+    var y = hAt(cx, cz);
+
+    /* 木围墙（留门） */
+    var R = 34;
+    for (var a = 0; a < 40; a++) {
+      var ang = a / 40 * Math.PI * 2;
+      var wx = cx + Math.cos(ang) * R;
+      var wz = cz + Math.sin(ang) * R;
+      /* 正门方向留口 */
+      var doorAng = Math.atan2(1, 0);
+      var diff = Math.abs(J.U.ang(ang, doorAng));
+      if (diff < 0.30) continue;
+      if (J.Terrain.slopeAt(wx, wz) > 0.85) continue;
+      var wy = hAt(wx, wz);
+      B.boxB(wx, wy - 0.6, wz, 0.34, 3.6, 0.34, C.woodD, { ry: ang });
+      if (a % 2 === 0) {
+        B.box(wx, wy + 1.5, wz, 0.16, 0.16, R * 0.16, C.woodD, { ry: ang });
+      }
+      J.Col.add(wx - 0.25, wy, wz - 0.25, wx + 0.25, wy + 3.2, wz + 0.25, 'thin');
+    }
+
+    /* 山门 */
+    var gx = cx + R, gz = cz;
+    var gy = hAt(gx, gz);
+    for (var s = -1; s <= 1; s += 2) {
+      B.boxB(gx, gy - 0.6, gz + s * 3.2, 0.5, 5.4, 0.5, C.woodD);
+      J.Col.add(gx - 0.35, gy, gz + s * 3.2 - 0.35, gx + 0.35, gy + 5, gz + s * 3.2 + 0.35, 'wall');
+    }
+    B.box(gx, gy + 5.0, gz, 0.6, 0.55, 7.2, C.woodD);
+    roof(gx, gy + 5.3, gz, 2.6, 7.6, 1.4, C.tile, C.tileD, Math.PI / 2);
+    lantern(gx - 0.8, gy + 4.2, gz - 2.2, 0xc8382a);
+    lantern(gx - 0.8, gy + 4.2, gz + 2.2, 0xc8382a);
+
+    /* 瞭望塔 ×2 */
+    [[cx - 18, cz + 20], [cx + 16, cz - 22]].forEach(function (p) {
+      var tx = p[0], tz = p[1], ty = hAt(tx, tz);
+      for (var sx = -1; sx <= 1; sx += 2)
+        for (var sz = -1; sz <= 1; sz += 2)
+          B.boxB(tx + sx * 1.7, ty - 1, tz + sz * 1.7, 0.32, 9, 0.32, C.woodD);
+      B.box(tx, ty + 8.2, tz, 4.4, 0.35, 4.4, C.wood);
+      for (var r2 = 0; r2 < 4; r2++) {
+        B.box(tx, ty + 8.9, tz + (r2 - 1.5) * 1.4, 4.2, 1.2, 0.14, C.woodD);
+      }
+      roof(tx, ty + 9.6, tz, 4.6, 4.6, 1.5, C.tile, C.tileD);
+      J.Col.add(tx - 2.2, ty, tz - 2.2, tx + 2.2, ty + 8.4, tz + 2.2, 'wall');
+    });
+
+    /* 木屋群 */
+    var spots = [[-14, -12, 1], [-6, 16, -1], [14, 8, -1], [8, -18, 1], [-20, 2, 1]];
+    spots.forEach(function (p) {
+      house(cx + p[0], cz + p[1], 7.5, 7, 3.4, { front: p[2], roofH: 1.9 });
+    });
+
+    /* 练武空地 */
+    var ax = cx - 2, az = cz + 2, ay = hAt(ax, az);
+    B.box(ax, ay + 0.06, az, 16, 0.14, 16, 0x6a5a44);
+    /* 兵器架 */
+    B.box(ax + 5, ay + 0.9, az - 5, 3.2, 0.16, 0.3, C.woodD);
+    for (var w = 0; w < 5; w++) {
+      B.box(ax + 3.6 + w * 0.7, ay + 1.4, az - 5, 0.08, 1.9, 0.08, 0x8a8a90, { rz: rnd(-0.1, 0.1) });
+    }
+    J.Col.add(ax + 3.4, ay, az - 5.3, ax + 6.6, ay + 2.4, az - 4.7, 'thin');
+
+    /* 营火 */
+    var fx = cx + 8, fz = cz + 16, fy = hAt(fx, fz);
+    for (var st = 0; st < 8; st++) {
+      var sa = st / 8 * 6.28;
+      B.box(fx + Math.cos(sa) * 0.9, fy + 0.12, fz + Math.sin(sa) * 0.9, 0.55, 0.28, 0.55, C.stoneD, { ry: sa });
+    }
+    B.box(fx, fy + 0.25, fz, 1.3, 0.3, 1.3, 0x2a2018);
+    var fire = new THREE.PointLight(0xff7a30, 2.2, 14, 2);
+    fire.position.set(fx, fy + 1.2, fz);
+    J.S.add(fire);
+    W.fires.push({ l: fire, ph: Math.random() * 6.28 });
+    lantern(fx, fy + 1.6, fz, 0xff8a3a);
+
+    /* 物资箱 */
+    W.cratePos = [];
+    [[cx - 8, cz - 6], [cx + 12, cz + 2], [cx - 17, cz + 8]].forEach(function (p) {
+      var bx = p[0], bz = p[1], by = hAt(bx, bz);
+      B.boxB(bx, by, bz, 1.3, 1.1, 1.3, 0x6a5030);
+      B.boxB(bx, by + 1.1, bz, 1.36, 0.12, 1.36, C.woodD);
+      J.Col.add(bx - 0.7, by, bz - 0.7, bx + 0.7, by + 1.2, bz + 0.7, 'thin');
+      W.cratePos.push({ x: bx, y: by, z: bz });
+    });
+
+    W.regions.push({ id: 4, name: '黑风山寨', x: cx, z: cz, r: 46 });
+    W.villageCenter = { x: cx, z: cz };
+  }
+
+  /* ═══════════════════════════════════════════════
+     区域五：废弃古寺
+     ═══════════════════════════════════════════════ */
+  function buildTemple() {
+    var cz = -185, cx = J.Terrain.pathX(cz);
+    var y = hAt(cx, cz);
+
+    /* 山门（残） */
+    for (var s = -1; s <= 1; s += 2) {
+      B.boxB(cx + s * 5, y - 0.6, cz + 26, 0.8, 5.0, 0.8, C.stoneD);
+      B.box(cx + s * 5, y + 4.2, cz + 26, 1.0, 0.4, 1.0, C.stoneL);
+    }
+    B.box(cx + 5, y + 5.2, cz + 26, 4.0, 0.5, 0.7, C.stoneD, { rz: 0.06 });
+    J.Col.add(cx - 5.6, y, cz + 25.6, cx - 4.4, y + 5, cz + 26.4, 'wall');
+    J.Col.add(cx + 4.4, y, cz + 25.6, cx + 5.6, y + 5.4, cz + 26.4, 'wall');
+
+    /* 石阶 */
+    for (var i = 0; i < 12; i++) {
+      var sz = cz + 22 - i * 1.8;
+      var sy = hAt(cx, sz);
+      B.box(cx, sy + 0.07, sz, 11 - i * 0.15, 0.18, 2.0, C.stone, { tint: 0.8 + i * 0.02 });
+    }
+
+    /* 主殿（可进入） */
+    var hx = cx, hz = cz + 2, hy = hAt(hx, hz);
+    var HW = 15, HD = 13, HH = 6.2;
+    B.box(hx, hy - 0.5, hz, HW + 2, 1.6, HD + 2, C.stoneD);
+
+    /* 墙体：留门口 */
+    B.boxB(hx, hy, hz - HD / 2, HW, HH, 0.7, C.wall);                    // 后墙
+    B.boxB(hx - HW / 2, hy, hz, 0.7, HH, HD, C.wall);                    // 左墙
+    B.boxB(hx + HW / 2, hy, hz, 0.7, HH, HD, C.wall);                    // 右墙
+    /* 前墙分两段，中间留 3.2m 门洞 */
+    B.boxB(hx - (HW / 2 + 1.6) / 2 - 1.6, hy, hz + HD / 2, HW / 2 - 1.6, HH, 0.7, C.wall);
+    B.boxB(hx + (HW / 2 + 1.6) / 2 + 1.6, hy, hz + HD / 2, HW / 2 - 1.6, HH, 0.7, C.wall);
+
+    /* 门框 */
+    B.boxB(hx - 1.9, hy, hz + HD / 2, 0.45, 4.4, 0.9, C.redD);
+    B.boxB(hx + 1.9, hy, hz + HD / 2, 0.45, 4.4, 0.9, C.redD);
+    B.box(hx, hy + 4.5, hz + HD / 2, 4.4, 0.5, 0.9, C.woodD);
+
+    /* 柱子 */
+    for (var c2 = -1; c2 <= 1; c2 += 2) {
+      B.boxB(hx + c2 * (HW / 2 - 1.2), hy, hz + HD / 2 - 1.2, 0.42, HH, 0.42, C.redD);
+    }
+    roof(hx, hy + HH, hz, HW, HD, 3.0, C.tile, C.tileD);
+
+    /* 墙碰撞：分段留门洞 */
+    J.Col.add(hx - HW / 2, hy, hz - HD / 2, hx + HW / 2, hy + HH, hz - HD / 2 + 0.5, 'wall');
+    J.Col.add(hx - HW / 2, hy, hz - HD / 2, hx - HW / 2 + 0.5, hy + HH, hz + HD / 2, 'wall');
+    J.Col.add(hx + HW / 2 - 0.5, hy, hz - HD / 2, hx + HW / 2, hy + HH, hz + HD / 2, 'wall');
+    J.Col.add(hx - HW / 2, hy, hz + HD / 2 - 0.5, hx - 1.7, hy + HH, hz + HD / 2, 'wall');
+    J.Col.add(hx + 1.7, hy, hz + HD / 2 - 0.5, hx + HW / 2, hy + HH, hz + HD / 2, 'wall');
+    /* 室内地板 */
+    J.Col.add(hx - HW / 2, hy - 0.3, hz - HD / 2, hx + HW / 2, hy + 0.15, hz + HD / 2, 'ground');
+
+    /* 殿内：佛像基座与供桌 */
+    B.box(hx, hy + 0.9, hz - 3.5, 5.0, 1.8, 3.0, C.stoneL);
+    B.box(hx, hy + 2.6, hz - 3.5, 2.2, 2.4, 1.6, 0x9a8e76);
+    B.box(hx, hy + 4.1, hz - 3.5, 2.6, 0.4, 1.9, C.gold);
+    J.Col.add(hx - 2.5, hy, hz - 5, hx + 2.5, hy + 3.8, hz - 2, 'wall');
+    B.box(hx, hy + 1.0, hz + 2.5, 3.2, 0.16, 1.2, C.woodD);
+
+    /* 石灯、断柱 */
+    lamp(cx - 8, cz + 20);
+    lamp(cx + 8, cz + 20);
+    for (var k = 0; k < 5; k++) {
+      var px2 = cx + rnd(-14, 14), pz2 = cz + rnd(8, 22);
+      var py2 = hAt(px2, pz2);
+      B.cyl(px2, py2, pz2, 0.32, rnd(0.8, 2.4), 8, C.stone, { r2: 0.28 });
+      J.Col.add(px2 - 0.35, py2, pz2 - 0.35, px2 + 0.35, py2 + 2.4, pz2 + 0.35, 'thin');
+    }
+    /* 枯树 */
+    [[-12, 14], [13, 10], [-10, -2]].forEach(function (p) {
+      var tx = cx + p[0], tz = cz + p[1], ty = hAt(tx, tz);
+      B.cyl(tx, ty, tz, 0.3, 4.5, 6, 0x4a4034);
+      for (var br = 0; br < 4; br++) {
+        var ba = rnd(0, 6.28);
+        B.box(tx + Math.cos(ba) * 1.3, ty + 3.2 + br * 0.4, tz + Math.sin(ba) * 1.3,
+          1.8, 0.14, 0.14, 0x4a4034, { ry: ba, rz: rnd(-0.4, 0.4) });
+      }
+      J.Col.add(tx - 0.32, ty, tz - 0.32, tx + 0.32, ty + 4.5, tz + 0.32, 'thin');
+    });
+
+    W.templeCenter = { x: hx, z: hz, y: hy };
+    W.regions.push({ id: 5, name: '废弃古寺', x: cx, z: cz, r: 48 });
+  }
+
+  /* ═══════════════════════════════════════════════
+     区域六：断剑谷
+     ═══════════════════════════════════════════════ */
+  function buildValley() {
+    var cz = -290, cx = J.Terrain.pathX(cz);
+    var y = hAt(cx, cz);
+
+    /* 环形石台 */
+    for (var i = 0; i < 36; i++) {
+      var a = i / 36 * Math.PI * 2;
+      var rr = 21;
+      var px = cx + Math.cos(a) * rr, pz = cz + Math.sin(a) * rr;
+      var py = hAt(px, pz);
+      B.box(px, py + 0.10, pz, 3.8, 0.24, 2.2, C.stoneL, { ry: -a });
+    }
+
+    /* 巨大断剑（插在中央） */
+    B.box(cx, y + 0.1, cz, 3.2, 0.35, 3.2, C.stoneD);
+    B.box(cx, y + 2.2, cz, 1.5, 4.4, 0.42, 0x8a8f96, { rz: 0.05 });
+    B.box(cx, y + 4.6, cz, 2.6, 0.5, 0.55, 0x8a8f96);
+    B.box(cx, y + 6.2, cz, 0.9, 2.6, 0.36, 0x9aa0a8, { rz: 0.06 });
+    B.box(cx, y + 7.6, cz, 0.5, 0.9, 0.3, 0xb0b6be);
+    J.Col.add(cx - 1.6, y, cz - 1.6, cx + 1.6, y + 5, cz + 1.6, 'wall');
+
+    /* 环绕石柱 */
+    for (var k = 0; k < 8; k++) {
+      var ka = k / 8 * Math.PI * 2 + 0.2;
+      var kx = cx + Math.cos(ka) * 26, kz = cz + Math.sin(ka) * 26;
+      var ky = hAt(kx, kz);
+      B.cyl(kx, ky - 1, kz, 0.75, rnd(5, 8.5), 8, C.stoneD, { r2: 0.62 });
+      J.Col.add(kx - 0.8, ky, kz - 0.8, kx + 0.8, ky + 8, kz + 0.8, 'wall');
+    }
+
+    /* 落石与枯树 */
+    for (var r2 = 0; r2 < 12; r2++) {
+      var ra = rnd(0, 6.28), rd = rnd(24, 40);
+      rock(cx + Math.cos(ra) * rd, cz + Math.sin(ra) * rd, rnd(0.8, 2.0));
+    }
+
+    /* 远处瀑布（视觉） */
+    var wfx = cx + 55, wfz = cz - 30;
+    var wy = hAt(wfx, wfz);
+    var wf = new THREE.Mesh(
+      new THREE.PlaneGeometry(9, 42, 1, 8),
+      new THREE.MeshBasicMaterial({ color: 0xd8e6ee, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide })
+    );
+    wf.position.set(wfx, wy + 14, wfz);
+    wf.rotation.y = -0.5;
+    J.S.add(wf);
+    W.waterfall = wf;
+
+    W.regions.push({ id: 6, name: '断剑谷', x: cx, z: cz, r: 52 });
+    W.bossArena = { x: cx, z: cz, r: 26, y: y };
+  }
+
+  /* ═══════════════════════════════════════════════
+     主构建
+     ═══════════════════════════════════════════════ */
   W.build = function () {
     J.Col.reset();
     B = new J.MB();
 
-    /* ── 地形 ── */
+    /* 地形 */
     J.Terrain.build();
 
-    /* ── 远山环（四层，越远越淡） ── */
-    var rings = [
-      { r: 900, h: 540, y: 250, top: '#9fb8c8', bot: '#c3d2d8', seed: 1.2, op: 0.55 },
-      { r: 720, h: 440, y: 200, top: '#87a3b4', bot: '#aec2ca', seed: 2.7, op: 0.70 },
-      { r: 540, h: 340, y: 152, top: '#6d8a9c', bot: '#96aeb8', seed: 4.1, op: 0.85 },
-      { r: 380, h: 250, y: 110, top: '#546f80', bot: '#7c95a2', seed: 5.6, op: 1.0 }
-    ];
-    W.rings = [];
-    for (var i = 0; i < rings.length; i++) {
-      var R = rings[i];
-      var m = mountainRing(R.r, R.h, R.y, R.top, R.bot, R.seed);
+    /* 远山 */
+    [[900, 540, 250, '#9fb8c8', '#c3d2d8', 1.2, 0.55],
+    [720, 440, 200, '#87a3b4', '#aec2ca', 2.7, 0.70],
+    [540, 340, 152, '#6d8a9c', '#96aeb8', 4.1, 0.85],
+    [380, 250, 110, '#546f80', '#7c95a2', 5.6, 1.0]].forEach(function (r) {
+      var m = mountainRing(r[0], r[1], r[2], r[3], r[4], r[5]);
+      m.material.opacity = r[6];
+      m.material.transparent = true;
       J.S.add(m);
-      W.rings.push(m);
+    });
+
+    /* 云 */
+    W.clouds = [];
+    var ctex = [cloudTex(0.2), cloudTex(0.55), cloudTex(0.9)];
+    for (var ci = 0; ci < 24; ci++) {
+      var ang = Math.random() * 6.283, dist = 150 + Math.random() * 420;
+      var yy = 40 + Math.random() * 90;
+      var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: ctex[ci % 3], transparent: true, opacity: 0.10 + Math.random() * 0.20,
+        depthWrite: false, fog: false,
+        color: new THREE.Color().setHSL(0.09, 0.05, 0.88)
+      }));
+      sp.position.set(Math.cos(ang) * dist, yy, Math.sin(ang) * dist);
+      var sc = 60 + Math.random() * 90;
+      sp.scale.set(sc, sc * 0.5, 1);
+      sp.userData = { ang: ang, dist: dist, drift: (Math.random() - 0.5) * 0.0014 };
+      J.S.add(sp);
+      W.clouds.push(sp);
     }
 
-    /* ── 云（sprite） ── */
-    W.clouds = buildClouds();
-
-    /* ── 谷底城镇：沿河道两侧 ── */
-    (function town() {
-      // 主街沿 Z 轴，在河的一侧
-      for (var z = -140; z < 150; z += 26) {
-        var cx = Math.sin(z * 0.0055) * 26 + Math.sin(z * 0.017) * 7;
-        var side = (Math.floor(z / 26) % 2 === 0) ? 1 : -1;
-        var bx = cx + side * 26;
-        var by = hAt(bx, z);
-        if (by > 16) continue;
-        house(bx, z, 9, 8, 3.8, { front: -side, roofH: 2.0 });
-        if (z % 52 === 0) {
-          lantern(bx - side * 5.2, by + 3.4, z + 4, 0xc8382a);
-          lantern(bx - side * 5.2, by + 3.4, z - 4, 0xd8a850);
-        }
-      }
-      // 客栈（河湾处，最大）
-      var innX = Math.sin(-62 * 0.0055) * 26 + 22;
-      var innY = hAt(innX, -62);
-      B.box(innX, innY - 0.4, -62, 16, 1.6, 13, C.stoneD);
-      B.boxB(innX, innY, -62, 14, 4.6, 11, 0xa89c88);
-      for (var i2 = -2; i2 <= 2; i2++) B.boxB(innX + i2 * 3.2, innY, -62 + 6.2, 0.3, 4.2, 0.3, C.woodD);
-      B.boxB(innX, innY + 4.2, -62, 15, 3.2, 12, 0x9a8e7a);
-      for (var wI = -2; wI <= 2; wI++) B.box(innX + wI * 2.6, innY + 5.4, -62 + 6.3, 1.6, 1.3, 0.1, C.woodD);
-      roof(innX, innY + 7.4, -62, 15, 12, 2.8, C.tile, C.tileD);
-      // 二层围栏
-      B.box(innX, innY + 4.6, -62 + 6.4, 14.5, 0.14, 0.18, C.wood);
-      lantern(innX - 3, innY + 4.0, -62 + 6.6, 0xc8382a);
-      lantern(innX + 3, innY + 4.0, -62 + 6.6, 0xd8a850);
-      J.Col.add(innX - 7.5, innY, -62 - 6, innX + 7.5, innY + 9, -62 + 6, 'wall');
+    /* 太阳光晕 */
+    (function () {
+      var cv = document.createElement('canvas'); cv.width = cv.height = 256;
+      var g = cv.getContext('2d');
+      var grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+      grd.addColorStop(0, 'rgba(255,244,214,1)');
+      grd.addColorStop(0.14, 'rgba(255,224,160,0.85)');
+      grd.addColorStop(0.42, 'rgba(255,196,120,0.26)');
+      grd.addColorStop(1, 'rgba(255,180,100,0)');
+      g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+      var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: new THREE.CanvasTexture(cv), transparent: true,
+        blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, fog: false
+      }));
+      sp.scale.set(420, 420, 1);
+      sp.position.set(640, 330, -690);
+      sp.renderOrder = -700;
+      J.S.add(sp);
     })();
 
-    /* ── 河上木桥 ── */
-    (function bridge() {
-      var bz = 24;
-      var cx = Math.sin(bz * 0.0055) * 26 + Math.sin(bz * 0.017) * 7;
-      var span = 46;
-      var y = 3.2;
-      // 桥面
-      for (var i = 0; i < 24; i++) {
-        var t = i / 23;
-        var px = cx - span / 2 + t * span;
-        var sag = Math.sin(t * Math.PI) * -1.6;
-        B.box(px, y + sag, bz, span / 23 * 1.15, 0.22, 3.4, C.wood);
-      }
-      // 桥栏
-      for (var s = -1; s <= 1; s += 2) {
-        for (var i2 = 0; i2 < 12; i2++) {
-          var t2 = i2 / 11;
-          var px2 = cx - span / 2 + t2 * span;
-          var sag2 = Math.sin(t2 * Math.PI) * -1.6;
-          B.box(px2, y + sag2 + 0.55, bz + s * 1.6, 0.14, 1.1, 0.14, C.woodD);
-        }
-        B.box(cx, y + Math.sin(0.5 * Math.PI) * -1.6 + 1.15, bz + s * 1.6, span, 0.12, 0.14, C.woodD);
-      }
-      J.Col.add(cx - span / 2, y - 2, bz - 1.8, cx + span / 2, y + 1, bz + 1.8, 'ground');
-    })();
+    /* 六区域 */
+    buildEntrance();
+    buildBamboo();
+    buildBridge();
+    W.regions.push({ id: 3, name: '断崖吊桥', x: J.Terrain.bridgeCenterX(0), z: 2, r: 42 });
+    buildVillage();
+    buildTemple();
+    buildValley();
 
-    /* ── 竹林：山坡带 ── */
-    for (var bz2 = -160; bz2 < 160; bz2 += 6) {
-      for (var side2 = -1; side2 <= 1; side2 += 2) {
-        for (var n = 0; n < 4; n++) {
-          var bx2 = side2 * rnd(56, 110);
-          var bzz = bz2 + rnd(-3, 3);
-          if (Math.hypot(bx2 - (-104), bzz - (-46)) < 26) continue;
-          var hh = hAt(bx2, bzz);
-          if (hh > 34) continue;
-          if (J.Terrain.slopeAt(bx2, bzz) > 0.75) continue;
-          bamboo(bx2, bzz, rnd(5, 9));
-        }
-      }
-    }
-    /* 松树点缀 */
-    for (var p = 0; p < 60; p++) {
-      var px3 = (Math.random() > 0.5 ? 1 : -1) * rnd(60, 150);
-      var pz3 = rnd(-200, 200);
-      var ph3 = hAt(px3, pz3);
-      if (ph3 < 8 || ph3 > 60) continue;
-      if (J.Terrain.slopeAt(px3, pz3) > 0.8) continue;
-      if (Math.hypot(px3 + 104, pz3 + 46) < 36) continue;   // 别挡住出生视野
-      pine(px3, pz3, rnd(0.65, 1.15));
+    /* 散落植被与岩石 */
+    for (var i = 0; i < 90; i++) {
+      var px = rnd(-260, 260), pz = rnd(-330, 300);
+      var d = Math.abs(px - J.Terrain.pathX(pz));
+      if (d < 12) continue;
+      var hh = hAt(px, pz);
+      if (hh < -10) continue;
+      if (J.Terrain.slopeAt(px, pz) > 0.85) continue;
+      if (Math.random() > 0.5) pine(px, pz, rnd(0.7, 1.3));
+      else rock(px, pz, rnd(0.6, 1.4));
     }
 
-    /* ── 崖顶楼阁群（远景剪影） ── */
-    var towers = [
-      [-185, -120, 1.5, 7], [-210, 20, 1.2, 6], [-165, 140, 1.0, 5.5],
-      [190, -140, 1.4, 6.5], [215, 30, 1.3, 6], [175, 150, 1.1, 5.5],
-      [-140, -230, 1.1, 5], [150, 235, 1.2, 5.5], [0, -250, 1.3, 6]
-    ];
-    for (var t3 = 0; t3 < towers.length; t3++) {
-      var T3 = towers[t3];
-      tower(T3[0], T3[1], T3[2], T3[3]);
-    }
-
-    /* ── 合并静态几何 ── */
+    /* 合并静态几何 */
     var mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0.02 });
     var mesh = B.build(mat);
-    mesh.name = 'village';
+    mesh.name = 'mapMesh';
     J.S.add(mesh);
     W.mesh = mesh;
     W.triCount = B.i.length / 3;
+    W.colliderCount = J.Col.list.length;
 
-    /* ── 空中尘絮 / 花瓣 ── */
-    var pc = 300;
-    var pg = new THREE.BufferGeometry();
+    /* 尘粒 */
+    var pc = 260, pg = new THREE.BufferGeometry();
     var pp = new Float32Array(pc * 3);
     for (var pi = 0; pi < pc; pi++) {
-      pp[pi * 3] = rnd(-160, 160); pp[pi * 3 + 1] = rnd(2, 60); pp[pi * 3 + 2] = rnd(-160, 160);
+      pp[pi * 3] = rnd(-160, 160);
+      pp[pi * 3 + 1] = rnd(0, 70);
+      pp[pi * 3 + 2] = rnd(-200, 200);
     }
     pg.setAttribute('position', new THREE.BufferAttribute(pp, 3));
-    var pm = new THREE.PointsMaterial({ color: 0xfff0d8, size: 0.14, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending });
-    W.dust = new THREE.Points(pg, pm);
+    W.dust = new THREE.Points(pg, new THREE.PointsMaterial({
+      color: 0xfff0d8, size: 0.13, transparent: true, opacity: 0.5,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    }));
     J.S.add(W.dust);
 
     return W;
+  };
+
+  /* ══ 区域判定 ══ */
+  W.regionAt = function (x, z) {
+    var best = null, bd = 1e9;
+    for (var i = 0; i < W.regions.length; i++) {
+      var r = W.regions[i];
+      var d = Math.hypot(x - r.x, z - r.z);
+      if (d < r.r && d < bd) { bd = d; best = r; }
+    }
+    return best;
   };
 
   W.update = function (dt, t, playerPos) {
@@ -420,21 +726,22 @@ J.World = (function () {
       var L = W.lanterns[i];
       L.g.rotation.z = Math.sin(t * 1.3 + L.ph) * 0.07;
     }
-    // 云漂移
+    for (var f = 0; f < W.fires.length; f++) {
+      var F = W.fires[f];
+      F.l.intensity = 1.7 + Math.sin(t * 9 + F.ph) * 0.4 + Math.sin(t * 23 + F.ph * 2) * 0.2;
+    }
     for (var c = 0; c < W.clouds.length; c++) {
-      var cm = W.clouds[c];
-      var u = cm.userData;
+      var cm = W.clouds[c], u = cm.userData;
       u.ang += u.drift * dt;
       cm.position.x = Math.cos(u.ang) * u.dist;
       cm.position.z = Math.sin(u.ang) * u.dist;
     }
-    // 尘
     if (W.dust) {
       var arr = W.dust.geometry.attributes.position.array;
       for (var d = 0; d < arr.length; d += 3) {
-        arr[d + 1] -= dt * 0.5;
-        arr[d] += Math.sin(t * 0.4 + arr[d + 2] * 0.1) * dt * 0.3;
-        if (arr[d + 1] < 1) arr[d + 1] = 58;
+        arr[d + 1] -= dt * 0.4;
+        arr[d] += Math.sin(t * 0.4 + arr[d + 2] * 0.1) * dt * 0.25;
+        if (arr[d + 1] < 0) arr[d + 1] = 68;
       }
       W.dust.geometry.attributes.position.needsUpdate = true;
     }

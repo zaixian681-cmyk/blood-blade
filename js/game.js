@@ -47,9 +47,10 @@ J.initPlayer = function () {
   H.weaponHolder.add(wp.root);
 
   var W = J.World;
+  var spawnX = J.Terrain.pathX(W.spawn.z);
   var P = {
     model: H, weapon: wp,
-    pos: new THREE.Vector3(W.spawn.x, J.Terrain.heightAt(W.spawn.x, W.spawn.z), W.spawn.z),
+    pos: new THREE.Vector3(spawnX, J.Terrain.heightAt(spawnX, W.spawn.z), W.spawn.z),
     yaw: W.spawn.yaw, vy: 0, onGround: true,
     hp: 240, maxHp: 240, stamina: 150, maxStamina: 150,
     qi: 70, maxQi: J.WINFO.maxQi, chargeT: 0, airJumps: 1, jumpCd: 0, jumpLatch: false,
@@ -253,7 +254,8 @@ J.updatePlayer = function (dt, t) {
       P.respawnT -= dt;
       if (P.respawnT <= 0) {
         P.dead = false; P.hp = P.maxHp; P.stamina = P.maxStamina;
-        P.pos.set(J.World.spawn.x, J.Terrain.heightAt(J.World.spawn.x, J.World.spawn.z), J.World.spawn.z);
+        var rsx = J.Terrain.pathX(J.World.spawn.z);
+        P.pos.set(rsx, J.Terrain.heightAt(rsx, J.World.spawn.z), J.World.spawn.z);
         P.yaw = J.World.spawn.yaw; P.camYaw = P.yaw + Math.PI;
         P.state = 'idle'; P.tim = 0; P.target = null;
         H.root.rotation.x = 0;
@@ -423,6 +425,17 @@ J.updatePlayer = function (dt, t) {
 
     /* 地形贴地 / 跳跃重力（处决演出中由演出接管位置） */
     var gy = J.Terrain.heightAt(P.pos.x, P.pos.z);
+    /* 站立面：取地形与附近碰撞盒顶面中更高的（支持桥板/室内地板） */
+    var nearBox = J.Col.query(P.pos.x, P.pos.z, 0.5);
+    var boxTop = -999;
+    for (var bi = 0; bi < nearBox.length; bi++) {
+      var bb = nearBox[bi];
+      if (bb.x0 > P.pos.x + 0.30 || bb.x1 < P.pos.x - 0.30) continue;
+      if (bb.z0 > P.pos.z + 0.30 || bb.z1 < P.pos.z - 0.30) continue;
+      if (bb.y1 > P.pos.y + 1.25) continue;        // 高过膝盖的不算地板
+      if (bb.y1 > boxTop) boxTop = bb.y1;
+    }
+    if (boxTop > gy) gy = boxTop;
     if (P.state === 'exec') { /* 跳过物理 */ }
     else if (P.pos.y > gy + 0.03 || P.vy > 0.01) {
       P.vy -= 27 * dt;
@@ -444,6 +457,16 @@ J.updatePlayer = function (dt, t) {
       P.pos.y = gy; P.vy = 0; P.onGround = true;
       if (P.state === 'air') { P.state = 'idle'; P.tim = 0; }
       P.airJumps = 1;
+    }
+
+    /* 掉进峡谷：送回最近的岸边 */
+    if (P.pos.y < -17) {
+      var backZ = P.pos.z > 0 ? J.Terrain.GORGE_Z1 + 6 : J.Terrain.GORGE_Z0 - 6;
+      var bx = J.Terrain.pathX(backZ);
+      P.pos.set(bx, J.Terrain.heightAt(bx, backZ) + 0.2, backZ);
+      P.vy = 0;
+      J.FX.shake(0.2, 0.3);
+      J.UI.toast('险些坠谷', 1.2);
     }
 
     /* 碰撞 */

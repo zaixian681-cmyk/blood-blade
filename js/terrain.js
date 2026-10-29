@@ -1,101 +1,126 @@
 /* ═══════════════════════════════════════════════
-   terrain.js — 峡谷地形
-   高度图 / 顶点着色 / 河流 / 碰撞采样
-   世界：600×600m，中央河谷，两侧抬升为山崖
+   terrain.js — 青崖山 · 断剑谷 地形
+   南→北：入口 / 竹海 / 吊桥峡谷 / 山寨 / 古寺 / 断剑谷
    ═══════════════════════════════════════════════ */
 J.Terrain = (function () {
 
-  var SIZE = 620;          // 世界边长
-  var SEG = 118;           // 网格分段（每格约 5m）
+  var SIZE = 760;
+  var SEG = 132;                 // 每格约 5.8m
   var HALF = SIZE / 2;
 
-  /* ── 伪随机与噪声 ── */
-  function hash2(x, y) {
-    var n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
-    return n - Math.floor(n);
-  }
-  function vnoise(x, y) {
-    var ix = Math.floor(x), iy = Math.floor(y);
-    var fx = x - ix, fy = y - iy;
+  /* ── 噪声 ── */
+  function h2(x, y) { var n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); }
+  function vn(x, y) {
+    var ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
     fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
-    var a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1);
-    return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
+    return (h2(ix, iy) * (1 - fx) + h2(ix + 1, iy) * fx) * (1 - fy) +
+      (h2(ix, iy + 1) * (1 - fx) + h2(ix + 1, iy + 1) * fx) * fy;
   }
-  function fbm(x, y, oct) {
-    var v = 0, amp = 0.5, f = 1;
-    for (var i = 0; i < (oct || 4); i++) { v += amp * vnoise(x * f, y * f); f *= 2.03; amp *= 0.5; }
-    return v;
-  }
-  function smoothstep(a, b, x) {
-    var t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-    return t * t * (3 - 2 * t);
+  function fbm(x, y, o) { var v = 0, a = 0.5, f = 1; for (var i = 0; i < (o || 4); i++) { v += a * vn(x * f, y * f); f *= 2.03; a *= 0.5; } return v; }
+  function ss(a, b, x) { var t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  /* ── 主路径：随 z 蜿蜒 ── */
+  function pathX(z) {
+    return Math.sin(z * 0.0072) * 26 + Math.sin(z * 0.019) * 7;
   }
 
-  /* ── 河谷横剖面：d = 距河心距离 ── */
-  function profile(d) {
-    if (d < 16) return 0.15 + d * 0.045;                        // 河滩
-    if (d < 58) return 0.87 + (d - 16) * 0.115;                  // 缓坡（城镇带）
-    if (d < 118) return 5.7 + Math.pow((d - 58) / 60, 1.55) * 24; // 山坡
-    if (d < 190) return 29.7 + Math.pow((d - 118) / 72, 1.30) * 38; // 高崖
-    return 67.7 + Math.min(22, (d - 190) * 0.25);               // 崖顶台地（封顶）
+  /* ── 沿 z 的基础高度剖面 ── */
+  var PROF = [
+    [400, 0], [300, 1.5], [200, 3], [120, 6], [64, 9], [34, 12],
+    [26, 12], [18, -22], [-18, -22], [-26, 13], [-60, 20],
+    [-140, 34], [-180, 44], [-230, 58], [-280, 66], [-330, 73], [-400, 76]
+  ];
+  function baseH(z) {
+    z = Math.max(-400, Math.min(400, z));
+    for (var i = 0; i < PROF.length - 1; i++) {
+      var a = PROF[i], b = PROF[i + 1];
+      if (z <= a[0] && z >= b[0]) {
+        var t = (a[0] - z) / (a[0] - b[0]);
+        return lerp(a[1], b[1], t);
+      }
+    }
+    return 0;
   }
 
-  /* ── 高度函数 ── */
+  /* ── 峡谷区域判定（只能走吊桥） ── */
+  var GORGE_Z0 = -26, GORGE_Z1 = 30;
+  var BRIDGE_HALF = 4.2;            // 桥宽的一半
+  function bridgeCenterX(z) { return pathX(z); }
+
   function heightAt(x, z) {
-    // 河道左右摆动，让峡谷不呆板
-    var riverCx = Math.sin(z * 0.0055) * 26 + Math.sin(z * 0.017) * 7;
-    var d = Math.abs(x - riverCx);
-    var h = profile(d);
+    var px = pathX(z);
+    var d = Math.abs(x - px);
+    var base = baseH(z);
 
-    // 大地形噪声：越高越崎岖
-    var rough = smoothstep(6, 40, h);
-    var n1 = (fbm(x * 0.0085, z * 0.0085, 4) - 0.5) * 2;
-    var n2 = (fbm(x * 0.026, z * 0.026, 3) - 0.5) * 2;
-    h += n1 * (2 + rough * 16) + n2 * (0.5 + rough * 5);
+    /* 峡谷：一条横贯东西的深沟，桥位置除外 */
+    if (z > GORGE_Z0 && z < GORGE_Z1) {
+      var bd = Math.abs(x - bridgeCenterX(z));
+      if (bd > BRIDGE_HALF + 0.6) {
+        /* 沟底，越靠中间越深 */
+        var deep = -22 + Math.sin(z * 0.2) * 1.4;
+        var edgeFade = ss(GORGE_Z1 + 6, GORGE_Z1 - 4, z) * ss(GORGE_Z0 - 6, GORGE_Z0 + 4, z);
+        return lerp(base, deep, edgeFade);
+      }
+      /* 桥面位置：地形沉下去，由桥板承担通行 */
+      return -22;
+    }
 
-    // 河道压平（水面附近不能有噪点）
-    if (d < 17) h = Math.min(h, 1.15 + Math.max(0, d - 6) * 0.05);
-    if (d < 8) h = 0.05 + d * 0.02;
+    /* 主路两侧抬升为山体 */
+    var side = Math.pow(Math.min(1, d / 105), 1.55) * 58;
 
+    /* 山门内侧略抬，形成"山口"感 */
+    var n = (fbm(x * 0.0082, z * 0.0082, 4) - 0.5) * 2;
+    var n2 = (fbm(x * 0.028, z * 0.028, 3) - 0.5) * 2;
+    var rough = ss(6, 34, base);
+    var h = base + side + n * (1.4 + rough * 9) + n2 * (0.4 + rough * 2.6);
+
+    /* 主路压平，保证可走 */
+    var roadW = 11;
+    if (d < roadW) {
+      var f = ss(roadW, roadW * 0.55, d);
+      h = lerp(h, base + n * 0.7, f);
+    }
+
+    /* 断剑谷：山顶平台 */
+    if (z < -250) {
+      var plat = ss(-250, -285, z);
+      h = lerp(h, 73 + n * 1.2, plat * 0.92);
+    }
     return h;
   }
 
-  /* ── 坡度（0..1，用于着色与可走性） ── */
   function slopeAt(x, z) {
-    var e = 1.6;
+    var e = 2.0;
     var hx = heightAt(x + e, z) - heightAt(x - e, z);
     var hz = heightAt(x, z + e) - heightAt(x, z - e);
     return Math.min(1, Math.hypot(hx, hz) / (2 * e) / 1.4);
   }
 
-  /* ── 构建地形网格 ── */
+  /* ── 地形网格 ── */
   function buildMesh() {
-    var geo = new THREE.BufferGeometry();
-    var n = SEG + 1;
+    var n = SEG + 1, step = SIZE / SEG;
     var pos = new Float32Array(n * n * 3);
     var col = new Float32Array(n * n * 3);
-    var step = SIZE / SEG;
+    var hs = new Float32Array(n * n);
 
-    var cSand = new THREE.Color(0x8e8168);
-    var cGrass = new THREE.Color(0x536b3c);
-    var cGrass2 = new THREE.Color(0x445c30);
-    var cRock = new THREE.Color(0x6b6a62);
-    var cRockH = new THREE.Color(0x7d848c);
-    var cDirt = new THREE.Color(0x6e5c44);
+    var cGrass = new THREE.Color(0x54683a);
+    var cGrass2 = new THREE.Color(0x445830);
+    var cDirt = new THREE.Color(0x6a5842);
+    var cRock = new THREE.Color(0x6e6b62);
+    var cRockH = new THREE.Color(0x828a92);
+    var cPath = new THREE.Color(0x8a7a60);
     var tmp = new THREE.Color();
 
-    var hs = new Float32Array(n * n);
     for (var iz = 0; iz < n; iz++) {
       for (var ix = 0; ix < n; ix++) {
-        var x = -HALF + ix * step;
-        var z = -HALF + iz * step;
+        var x = -HALF + ix * step, z = -HALF + iz * step;
         var h = heightAt(x, z);
         hs[iz * n + ix] = h;
         var k = (iz * n + ix) * 3;
         pos[k] = x; pos[k + 1] = h; pos[k + 2] = z;
       }
     }
-    // 着色（依赖邻点算坡度）
     for (var iz2 = 0; iz2 < n; iz2++) {
       for (var ix2 = 0; ix2 < n; ix2++) {
         var i0 = iz2 * n + ix2;
@@ -103,97 +128,96 @@ J.Terrain = (function () {
         var hx = hs[iz2 * n + Math.min(n - 1, ix2 + 1)] - hs[iz2 * n + Math.max(0, ix2 - 1)];
         var hz = hs[Math.min(n - 1, iz2 + 1) * n + ix2] - hs[Math.max(0, iz2 - 1) * n + ix2];
         var sl = Math.min(1, Math.hypot(hx, hz) / (2 * step) / 1.3);
+        var x2 = -HALF + ix2 * step, z2 = -HALF + iz2 * step;
+        var dRoad = Math.abs(x2 - pathX(z2));
 
-        if (h0 < 1.5) tmp.copy(cSand);
-        else if (h0 < 6) tmp.copy(cGrass).lerp(cDirt, smoothstep(5, 1.6, h0) * 0.6);
-        else if (h0 < 26) tmp.copy(cGrass).lerp(cGrass2, smoothstep(8, 24, h0));
-        else if (h0 < 55) tmp.copy(cGrass2).lerp(cRock, smoothstep(26, 52, h0));
-        else tmp.copy(cRock).lerp(cRockH, smoothstep(55, 110, h0));
-        if (h0 > 40) tmp.lerp(new THREE.Color(0x76898f), smoothstep(40, 95, h0) * 0.55);
+        if (h0 < -6) tmp.copy(cRock).lerp(new THREE.Color(0x3a4048), 0.5);
+        else if (h0 < 5) tmp.copy(cGrass);
+        else if (h0 < 30) tmp.copy(cGrass).lerp(cGrass2, ss(8, 26, h0));
+        else if (h0 < 58) tmp.copy(cGrass2).lerp(cRock, ss(30, 55, h0));
+        else tmp.copy(cRock).lerp(cRockH, ss(58, 95, h0));
 
-        // 陡坡露岩
-        tmp.lerp(cRock, sl * 0.72);
-        // 轻微色噪声，避免大片死色
-        var nz = (vnoise(ix2 * 0.7, iz2 * 0.7) - 0.5) * 0.10;
+        /* 主路：踩出土色 */
+        if (dRoad < 7 && h0 > -6) tmp.lerp(cPath, ss(7, 3, dRoad) * 0.85);
+        /* 陡坡露岩 */
+        tmp.lerp(cRock, sl * 0.66);
+        /* 高处偏冷 */
+        if (h0 > 40) tmp.lerp(new THREE.Color(0x77898f), ss(40, 95, h0) * 0.5);
+
+        var nz = (vn(ix2 * 0.8, iz2 * 0.8) - 0.5) * 0.09;
         var k2 = i0 * 3;
         col[k2] = Math.max(0, tmp.r + nz);
         col[k2 + 1] = Math.max(0, tmp.g + nz);
         col[k2 + 2] = Math.max(0, tmp.b + nz);
       }
     }
-    // 索引
-    var idx = new Uint32Array(SEG * SEG * 6);
-    var p = 0;
+    var idx = new Uint32Array(SEG * SEG * 6), p = 0;
     for (var iz3 = 0; iz3 < SEG; iz3++) {
       for (var ix3 = 0; ix3 < SEG; ix3++) {
-        var a = iz3 * n + ix3, b = a + 1, c = a + n, d = c + 1;
+        var a = iz3 * n + ix3, b = a + 1, c = a + n, dd = c + 1;
         idx[p++] = a; idx[p++] = c; idx[p++] = b;
-        idx[p++] = b; idx[p++] = c; idx[p++] = d;
+        idx[p++] = b; idx[p++] = c; idx[p++] = dd;
       }
     }
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    geo.setIndex(new THREE.BufferAttribute(idx, 1));
-    geo.computeVertexNormals();
-
-    var mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0.0 });
-    var mesh = new THREE.Mesh(geo, mat);
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.setIndex(new THREE.BufferAttribute(idx, 1));
+    g.computeVertexNormals();
+    var mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 }));
     mesh.receiveShadow = true;
     mesh.castShadow = true;
-    mesh.name = 'terrain';
     return mesh;
   }
 
-  /* ── 河水 ── */
-  function buildWater() {
-    var g = new THREE.PlaneGeometry(SIZE, SIZE, 1, 1);
+  /* ── 峡谷底部溪流 ── */
+  function buildStream() {
+    var g = new THREE.PlaneGeometry(SIZE, 60, 1, 1);
     var m = new THREE.Mesh(g, new THREE.ShaderMaterial({
       transparent: true, depthWrite: false,
-      uniforms: {
-        uTime: { value: 0 },
-        uDeep: { value: new THREE.Color(0x1e3a3e) },
-        uShallow: { value: new THREE.Color(0x4a7a76) },
-        uSun: { value: new THREE.Color(0xffd8a0) }
-      },
+      uniforms: { uTime: { value: 0 } },
       vertexShader: 'varying vec2 vUv; varying vec3 vW; void main(){ vUv=uv; vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }',
       fragmentShader: [
-        'uniform float uTime; uniform vec3 uDeep,uShallow,uSun;',
-        'varying vec2 vUv; varying vec3 vW;',
+        'uniform float uTime; varying vec2 vUv; varying vec3 vW;',
         'float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}',
         'float n2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);',
         '  return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}',
         'void main(){',
-        '  vec2 p = vW.xz*0.11;',
-        '  float w = n2(p + vec2(uTime*0.06, uTime*0.11))*0.6 + n2(p*2.3 - vec2(uTime*0.15,0.0))*0.4;',
-        '  vec3 c = mix(uDeep, uShallow, w*0.85);',
-        '  float spark = smoothstep(0.72,0.98,w) * 0.55;',
-        '  c += uSun * spark * 0.6;',
-        '  float edge = smoothstep(0.0,0.25, abs(vUv.x-0.5)*2.0);',
-        '  gl_FragColor = vec4(c, 0.86);',
+        '  vec2 p = vW.xz*0.13;',
+        '  float w = n2(p + vec2(uTime*0.07, uTime*0.13))*0.6 + n2(p*2.4 - vec2(uTime*0.18,0.0))*0.4;',
+        '  vec3 c = mix(vec3(0.10,0.20,0.22), vec3(0.34,0.52,0.52), w);',
+        '  c += vec3(0.9,0.85,0.7) * smoothstep(0.75,0.99,w) * 0.4;',
+        '  gl_FragColor = vec4(c, 0.90);',
         '}'
       ].join('\n')
     }));
     m.rotation.x = -Math.PI / 2;
-    m.position.y = 0.55;
+    m.position.y = -20.5;
+    m.position.z = 2;
     m.renderOrder = 2;
     return m;
   }
 
   var T = {
-    SIZE: SIZE, HALF: HALF, heightAt: heightAt, slopeAt: slopeAt,
-    waterLevel: 0.55,
+    SIZE: SIZE, HALF: HALF, heightAt: heightAt, slopeAt: slopeAt, pathX: pathX,
+    GORGE_Z0: GORGE_Z0, GORGE_Z1: GORGE_Z1, bridgeCenterX: bridgeCenterX, BRIDGE_HALF: BRIDGE_HALF,
+
+    /* 区域高度查询（给放置建筑用） */
+    baseAt: function (z) { return baseH(z); },
+
     build: function () {
       var mesh = buildMesh();
       J.S.add(mesh);
       T.mesh = mesh;
-      var water = buildWater();
-      J.S.add(water);
-      T.water = water;
+      var st = buildStream();
+      J.S.add(st);
+      T.stream = st;
       T.triCount = SEG * SEG * 2;
       return T;
     },
+
     update: function (dt, t) {
-      if (T.water) T.water.material.uniforms.uTime.value = t;
+      if (T.stream) T.stream.material.uniforms.uTime.value = t;
     }
   };
   return T;
